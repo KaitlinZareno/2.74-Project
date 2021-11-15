@@ -35,8 +35,8 @@ ddt = @(r) jacobian(r,[q;dq])*[dq;ddq]; % a handy anonymous function for taking 
 
 % [DEFINE KINEMATIC VECTORS HERE] %
 r_cart = x*ihat;
-r_cm0 = c_00*th0hat;
-rA = l_0A*th0hat;
+r_cm0 = r_cart+c_00*th0hat;
+rA = r_cart+l_0A*th0hat;
 r_cms = rA + c_AM*thshat;
 r_AB = rA + l_AB*thshat;
 r_cm1 = r_AB + c_B1*th1hat;
@@ -89,12 +89,12 @@ T0 = (1/2)*m0*dot(v_cm0', v_cm0)+ (1/2)*(I0)*dth0^2;
 Ts = (1/2)*ms*dot(v_cms', v_cms)+ (1/2)*(Is)*dths^2;
 T1 = (1/2)*m1*dot(v_cm1', v_cm1)+ (1/2)*(I1)*dth1^2;
 T2 = (1/2)*m2*dot(v_cm2', v_cm2)+ (1/2)*(I2)*dth2^2;
-T3 = (1/2)*m1*dot(v_cm3', v_cm3)+ (1/2)*(I3)*dth2^2;
-T4 = (1/2)*m2*dot(v_cm4', v_cm4)+ (1/2)*(I4)*dth1^2;
+T3 = (1/2)*m3*dot(v_cm3', v_cm3)+ (1/2)*(I3)*dth2^2;
+T4 = (1/2)*m4*dot(v_cm4', v_cm4)+ (1/2)*(I4)*dth1^2;
 
 Tc = (1/2)*mc*dot(v_cart', v_cart);
 %foot
-% T5 = (1/2)*m1*dot(v_cm5', v_cm5)+ (1/2)*(I5)*dth3^2; 
+% T5 = (1/2)*m5*dot(v_cm5', v_cm5)+ (1/2)*(I5)*dth3^2; 
 
 % ---------------------------------- %
 
@@ -111,8 +111,8 @@ P4 = m4*g*dot(r_cm4,jhat);
 
 %foot
 % P5 = m5*g*dot(r_cm5,jhat);
-% Pkx = 1/2*k*(dot(r_IG,jhat)^2-dot(r_heela,jhat)^2); %break down spring force into x and y components
-% Pky = 1/2*k*(dot(r_IG,ihat)^2-dot(r_heela,ihat)^2); 
+% Pky = 1/2*k*(dot(r_IG,jhat)^2-dot(r_heela,jhat)^2); %break down spring force into x and y components
+% Pkx = 1/2*k*(dot(r_IG,ihat)^2-dot(r_heela,ihat)^2); 
 
 % Compute entire system energy
 T = simplify(T0+ Ts + T1 + T2 + T3 + T4 + Tc); 
