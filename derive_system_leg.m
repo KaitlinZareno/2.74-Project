@@ -1,16 +1,16 @@
 name = 'leg';
 
 % Define variables for time, generalized coordinates + derivatives, controls, and parameters 
-syms x t th1 th2 th3 dx dth1 dth2 dth3 ddx ddth1 ddth2 ddth3 real
+syms x y t th1 th2 th3 dx dy dth1 dth2 dth3 ddx ddy ddth1 ddth2 ddth3 real
 syms m0 m1 m2 m3 m4 m5 I1 I2 I3 I4 I5 l_O_m1 l_B_m2 l_A_m3 l_C_m4 c5 g k real
 syms l_OA l_OB l_AC l_DE l_IG l_GH l_heela real 
 syms tau1 tau2 tau3 Fx Fy real
 syms Ir N real
 
 % Group them
-q   = [x; th1 ; th2 ; th3];      % generalized coordinates
-dq  = [dx; dth1 ; dth2; dth3];    % first time derivatives
-ddq = [ddx; ddth1;ddth2; ddth3];  % second time derivatives
+q   = [x; y; th1 ; th2 ; th3];      % generalized coordinates
+dq  = [dx; dy; dth1 ; dth2; dth3];    % first time derivatives
+ddq = [ddx; ddy; ddth1;ddth2; ddth3];  % second time derivatives
 u   = [tau1 ; tau2; tau3];     % controls
 F   = [Fx ; Fy];
 
@@ -31,7 +31,7 @@ th3hat = sin(th3 + th2 + th1)*ihat - cos(th3+ th2 + th1)*jhat;
 ddt = @(r) jacobian(r,[q;dq])*[dq;ddq]; % a handy anonymous function for taking time derivatives
 
 % [DEFINE KINEMATIC VECTORS HERE] %
-r0 = x*ihat;  %ADD X VALUE TO INDICATE MOVEMTN
+r0 = x*ihat + y*jhat;  %ADD X VALUE TO INDICATE MOVEMTN
 
 rA = r0 + l_OA*th1hat;  %ADD X VALUE TO INDICATE MOVEMTN
 rM1 = r0 + l_O_m1*th1hat;
@@ -41,8 +41,8 @@ rM3 = rA+ l_A_m3 * th2hat;
 rM2 = rB + l_B_m2 * th2hat;
 
 rC = rA + l_AC * th2hat;
-rD = rB + l_AC*th2hat;
-rE = rD + l_DE*th1hat;
+rD = rB + l_AC*th2hat; 
+rE = rD + l_DE*th1hat; %defined rc+lce*th1hat?
 
 rM4 = rC + l_C_m4*th1hat;
 
@@ -52,6 +52,7 @@ rH = rE + l_GH*th3hat; %two havles of the same foot
 rI = rE-l_IG*th3hat; %second half MAKE NEGATIVE TO FLIP DIRECTION OF VECTOR, heel position
 rM5 = rE + c5*th3hat;
 
+%velocity
 vR0 = ddt(r0);
 vM1 = ddt(rM1);
 vM2 = ddt(rM2);
@@ -73,7 +74,7 @@ M2Q = @(M,w) simplify(jacobian(w,dq)'*(M));   % moment contributions to generali
 % [DEFINE LINEAR AND ANGULAR VELOCITIES HERE] %
 
 T0 = (1/2)*m0*dot(vR0', vR0); %INCLUDE ANOTHER ROTATIONAL INTERTIA THING FOR BOOM?
-T1 = (1/2)*m1*dot(vM1', vM1)+ (1/2)*(I1)*dth1^2; %TRANSPOSE rM1?? dot(rM1',rM1)
+T1 = (1/2)*m1*dot(vM1', vM1)+ (1/2)*(I1)*dth1^2; 
 T2 = (1/2)*m2*dot(vM2', vM2)+ (1/2)*(I2)*dth2^2;
 T3 = (1/2)*m3*dot(vM3', vM3)+ (1/2)*(I3)*dth2^2;
 T4 = (1/2)*m4*dot(vM4', vM4)+ (1/2)*(I4)*dth1^2;
@@ -101,8 +102,8 @@ Pkx = 1/2*k*(dot(rI,ihat)^2-dot(r_heela,ihat)^2);
 % Compute entire system energy
 %T = simplify(T1 + T2 + T3 + T4 +T5); 
 T = simplify(T0 + T1 + T2 + T3 + T4 +T5); %with x movement
-%V = P1+P2+P3+P4+P5;
-V = P1+P2+P3+P4+P5+Pky+Pkx;
+V = P1+P2+P3+P4+P5;
+%V = P1+P2+P3+P4+P5+Pky+Pkx;
 
 % Find Generalized forces
 Q_tau1 = M2Q(tau1*khat,dth1*khat);
@@ -124,15 +125,27 @@ g = ddt(jacobian(L,dq).') - jacobian(L,q).' - Q;
 A = jacobian(g,ddq);
 b = A*ddq - g;
 
-% Compute foot jacobian
-Jleg = jacobian(rH,q);%IS IT RH __ TIP OF FOOT
-
 % Write Energy Function and Equations of Motion
 z  = [q ; dq];
 matlabFunction(A,'file',['A_' name],'vars',{z p});
 matlabFunction(b,'file',['b_' name],'vars',{z u p});
 matlabFunction(E,'file',['energy_' name],'vars',{z p});
-matlabFunction(rH,'file',['position_foot'],'vars',{z p}); %FOOT CHANGES
-matlabFunction(drH,'file',['velocity_foot'],'vars',{z p});
-matlabFunction(Jleg,'file',['jacobian_foot'],'vars',{z p});
+
+%toe 
+matlabFunction(rH,'file',['position_toe'],'vars',{z p}); 
+matlabFunction(drH,'file',['velocity_toe'],'vars',{z p});
+Jtoe = jacobian(rH,q);
+matlabFunction(Jtoe,'file',['jacobian_toe'],'vars',{z p});
+%heel 
+matlabFunction(rI,'file',['position_heel'],'vars',{z p});
+matlabFunction(drI,'file',['velocity_heel'],'vars',{z p});
+Jheel= jacobian(rI,q);
+matlabFunction(Jheel,'file',['jacobian_heel'],'vars',{z p});
+
+%ankle 
+matlabFunction(rE,'file',['position_ankle'],'vars',{z p});
+matlabFunction(drE,'file',['velocity_ankle'],'vars',{z p});
+Jankle= jacobian(rE,q);
+matlabFunction(Jankle,'file',['jacobian_ankle'],'vars',{z p});
+
 matlabFunction(keypoints,'file',['keypoints_' name],'vars',{z p});
