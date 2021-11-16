@@ -102,8 +102,8 @@ Pkx = 1/2*k*(dot(rI,ihat)^2-dot(r_heela,ihat)^2);
 % Compute entire system energy
 %T = simplify(T1 + T2 + T3 + T4 +T5); 
 T = simplify(T0 + T1 + T2 + T3 + T4 +T5); %with x movement
-V = P1+P2+P3+P4+P5;
-%V = P1+P2+P3+P4+P5+Pky+Pkx;
+%V = P1+P2+P3+P4+P5;
+V = P1+P2+P3+P4+P5+Pky+Pkx;
 
 % Find Generalized forces
 Q_tau1 = M2Q(tau1*khat,dth1*khat);
