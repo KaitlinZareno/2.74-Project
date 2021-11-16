@@ -20,6 +20,7 @@ function simulate_system_leg()
     N = 18.75;
     Ir = 0.0035/N^2;
     g = 9.81;
+%     g=0;
     k=0.0001;
     
     %% Parameter vector
@@ -33,6 +34,8 @@ function simulate_system_leg()
     z0 = [0; .25; -pi/4; pi/2; 0; 0; 0; 0; 0; 0]; %moves with x velocity!
     z_out = zeros(10,num_step);
     z_out(:,1) = z0;
+   
+    
     for i=1:num_step-1
         dz = dynamics(tspan(i), z_out(:,i), p);
         z_out(6:10,i+1) = z_out(6:10,i) + dz(6:10)*dt;
@@ -81,11 +84,11 @@ end
 
 function tau = control_law(t,z,p)
     % Controller gains, Update as necessary for Problem 1
-    K_x = 40; % Spring stiffness X
-    K_y = 40; % Spring stiffness Y
-    D_x = 4;  % Damping X
-    D_y = 4;  % Damping Y
-    rEd = [.025 -.2 0]'; % Desired position of ANKLE CHANGW
+    K_x = 20; % Spring stiffness X
+    K_y = 20; % Spring stiffness Y
+    D_x = 5;  % Damping X
+    D_y = 5;  % Damping Y
+    rEd = [0 0 0]'; % Desired position of ANKLE CHANGW
     w = 3;
     
     %% STEPS TO COMPLETE PROBLEM 1.3
@@ -95,13 +98,11 @@ function tau = control_law(t,z,p)
    rE = position_ankle(z,p); %THIS VALUE NOT HAPPY
     % b. Compute J, the jacobian of r_E
    jE = jacobian_ankle(z,p); %THIS VALUE NOT HAPPY
-    % c. Use these results to compute \tau as specified in the write-up
-   V_virt= 1/2*K_x*(rE(1)-rEd(1))^2+1/2*K_y*(rE(2)-rEd(2))^2; %DESIRED TOE POSITION VS ACTUAL
-
+   jE = jE(:, 3:end);
    vF = velocity_ankle(z,p);
-   rEd = [0.025*cos(w*t); -0.2+0.025*sin(w*t); 0]; %TRACK SINUSOID , make point g move in an ellipse
-   
-   tau = -transpose(jE)*[K_x*(rE(1)-rEd(1))+D_x*vF(1);K_y*(rE(2)-rEd(2))+D_y*vF(2);0];  %DAMPING
+   rEd = [0.05; 0.05; 0]; %TRACK SINUSOID , make point g move in an ellipse
+
+   tau = -transpose(jE)*[K_x*(rE(1)-rEd(1))+D_x*vF(1);K_y*(rE(2)-rEd(2))+D_y*vF(2); 0];  %DAMPING
 end
 
 
@@ -179,7 +180,7 @@ function dz = dynamics(t,z,p)
     
     % Compute Controls
     tau = control_law(t,z,p); %tau EXPLODING WITH CONTROLS
-    tau = [0;0;0;0;0]; 
+    %tau = [0;0;0.1*sin(t)]; 
     
     % Get b = Q - V(q,qd) - G(q)
     b = b_leg(z,tau,p); 
@@ -193,7 +194,7 @@ function dz = dynamics(t,z,p)
     % Compute the contribution of the contact force to the generalied force
     QFc_t=  transpose(J_toe)*[0;Fc;0];
     QFc_h=  transpose(J_heel)*[0;Fh;0];
-    QFc = QFc_h + QFc_t;
+    QFc = QFc_t +  QFc_h;
     %QFc = zeros([5,1]);
     
     % Compute the contact force (used for problem 2.5)

@@ -8,7 +8,7 @@ syms tau1 tau2 tau3 Fx Fy real
 syms Ir N real
 
 % Group them
-q   = [x; y; th1 ; th2 ; th3];      % generalized coordinates
+q   = [x; y; th1 ; th2 ; th3; ths];      % generalized coordinates
 dq  = [dx; dy; dth1 ; dth2; dth3];    % first time derivatives
 ddq = [ddx; ddy; ddth1;ddth2; ddth3];  % second time derivatives
 u   = [tau1 ; tau2; tau3];     % controls
@@ -141,7 +141,6 @@ matlabFunction(rI,'file',['position_heel'],'vars',{z p});
 matlabFunction(drI,'file',['velocity_heel'],'vars',{z p});
 Jheel= jacobian(rI,q);
 matlabFunction(Jheel,'file',['jacobian_heel'],'vars',{z p});
-
 %ankle 
 matlabFunction(rE,'file',['position_ankle'],'vars',{z p});
 matlabFunction(drE,'file',['velocity_ankle'],'vars',{z p});
