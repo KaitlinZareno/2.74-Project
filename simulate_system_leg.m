@@ -20,8 +20,8 @@ function simulate_system_leg()
     N = 18.75;
     Ir = 0.0035/N^2;
     g = 9.81;
-%     g=0;
-    k=0.0001;
+    %g=0;
+    k=1;
     
     %% Parameter vector
     p   = [m0 m1 m2 m3 m4 m5 I1 I2 I3 I4 I5 Ir N l_O_m1 l_B_m2 l_A_m3 l_C_m4 c5 l_OA l_OB l_AC l_DE l_IG l_GH l_heela g k]';        % parameters
@@ -34,11 +34,10 @@ function simulate_system_leg()
     z0 = [0; .25; -pi/4; pi/2; 0; 0; 0; 0; 0; 0]; %moves with x velocity!
     z_out = zeros(10,num_step);
     z_out(:,1) = z0;
-   
-    
+      
     for i=1:num_step-1
         dz = dynamics(tspan(i), z_out(:,i), p);
-        z_out(6:10,i+1) = z_out(6:10,i) + dz(6:10)*dt;
+        z_out(6:10,i+1) = z_out(6:10,i) + dz(6:10)*dt; %IMPACT CONTACT
         z_out(1:5,i+1) = z_out(1:5,i) + z_out(6:10,i+1)*dt;
     end
 
@@ -158,6 +157,17 @@ function Fh = contact_force_heel(z,p)
     end 
 end
 
+function Ankle_Res = ankle_constraint(z)
+    th3 = z(5);
+%     if th3 < 0
+%         th3=0;
+%     end
+%     if th3 > 178
+%         th3=178;
+%     end
+	Ankle_Res = th3;
+end
+
 
 function Tauc = joint_limit_torque(z,p)
     %% Fixed parameters for rotational spring damper at joint limit contact
@@ -169,21 +179,21 @@ end
 
 
 function dz = dynamics(t,z,p)
-%     x = z(1);        th1 = z(2);     
-%     th2 = z(3);      th3 = z(4);
+%     x = z(1);        y= z(2)      
+%    th1 = z(3);     th2 = z(4);      th3 = z(5);
 %     
-%     dx = z(5);       dth1 = z(6);     
-%     dth2= z(7);      dth3 = z(8);
+%     dx = z(5);       dy = z(6);     
+%     dth1 = z(7);  dth2= z(8);      dth3 = z(9);
     
     % Get mass matrix
     A = A_leg(z,p);
     
     % Compute Controls
-    tau = control_law(t,z,p); %tau EXPLODING WITH CONTROLS
-    %tau = [0;0;0.1*sin(t)]; 
+    %tau = control_law(t,z,p); %tau EXPLODING WITH CONTROLS
+    tau = [0;0;0]; 
     
-    % Get b = Q - V(q,qd) - G(q)
-    b = b_leg(z,tau,p); 
+%     % Get b = Q - V(q,qd) - G(q)
+%     b = b_leg(z,tau,p); 
   
     % Compute the contact force (used for problem 2)
     Fc = contact_force_toe(z,p);
@@ -194,8 +204,21 @@ function dz = dynamics(t,z,p)
     % Compute the contribution of the contact force to the generalied force
     QFc_t=  transpose(J_toe)*[0;Fc;0];
     QFc_h=  transpose(J_heel)*[0;Fh;0];
-    QFc = QFc_t +  QFc_h;
-    %QFc = zeros([5,1]);
+    QFc = QFc_t +  QFc_h; 
+    
+    z(5) = ankle_constraint(z);
+    
+    if QFc ~= 0
+        t1= z(3);
+        t2 = z(4);
+        td1 = -pi/4;
+        td2 = pi/2;
+        k= 100;
+        tau = [k*(td1-t1);k*(td2-t2);0];
+    end
+   
+    % Get b = Q - V(q,qd) - G(q)
+    b = b_leg(z,tau,p);
     
     % Compute the contact force (used for problem 2.5)
     Tauc = joint_limit_torque(z,p);
