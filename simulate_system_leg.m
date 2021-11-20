@@ -21,13 +21,17 @@ function simulate_system_leg()
     Ir = 0.0035/N^2;
     g = 9.81;
     %g=0;
-    k=1;
+    k=5;
+    
+    restitution_coeff = 0.;
+    friction_coeff = 10;
+    ground_height = 0;
     
     %% Parameter vector
     p   = [m0 m1 m2 m3 m4 m5 I1 I2 I3 I4 I5 Ir N l_O_m1 l_B_m2 l_A_m3 l_C_m4 c5 l_OA l_OB l_AC l_DE l_IG l_GH l_heela g k]';        % parameters
     
     %% Perform Dynamic simulation
-    dt = 0.001;
+    dt = 0.0001;
     tf = 3;
     num_step = floor(tf/dt);
     tspan = linspace(0, tf, num_step); 
@@ -37,8 +41,9 @@ function simulate_system_leg()
       
     for i=1:num_step-1
         dz = dynamics(tspan(i), z_out(:,i), p);
-        z_out(6:10,i+1) = z_out(6:10,i) + dz(6:10)*dt; %IMPACT CONTACT
-        z_out(1:5,i+1) = z_out(1:5,i) + z_out(6:10,i+1)*dt;
+        %discrete impact
+        z_out(6:10,i+1) = discrete_impact_contact(z_out(:,i+1),p, restitution_coeff, friction_coeff, ground_height);
+        z_out(1:5,i+1) = z_out(1:5,i) + z_out(6:10,i+1)*dt; %CHECK
     end
 
     %% Compute Energy
@@ -79,6 +84,39 @@ function simulate_system_leg()
     %plot([-.2 .2],[-.125 -.125],'k'); 
     
     animateSol(tspan,z_out,p);
+end
+
+function qdot = discrete_impact_contact(z,p, rest_coeff, fric_coeff, yC)
+    y = position_toe(z,p); %or toe?
+    y = -y(2);
+    y_dot = velocity_toe(z,p);
+    Cy = y-yC;
+    Cy_dot = y_dot(2);
+    
+    J = jacobian_toe(z,p);
+    Mm = A_leg(z,p);
+    
+    lamY = inv(J(2,:)*inv(Mm)*J(2,:)');
+    lamX = inv(J(1,:)*inv(Mm)*J(1,:)');
+    
+    %where z(3,4) = q_dot   
+    if (Cy > 0 || Cy_dot > 0)
+        qdot = z(6:10);
+    else
+        %update y dir
+        F_cy = lamY*(-rest_coeff*Cy_dot-(J(2,:)*z(6:10)));
+        z(6:10) = z(6:10) + inv(Mm)*J(2,:)'*F_cy;
+        %update x dir
+        F_cx = lamX*(0-J(1,:)*z(6:10));
+        %truncate if necessary
+        if (F_cx > fric_coeff*F_cy)
+            F_cx = fric_coeff*F_cy;
+        elseif (-F_cx < -fric_coeff*F_cy)
+            F_cx = -fric_coeff*F_cy;
+        end
+        z(6:10) = z(6:10) + inv(Mm)*J(1,:)'*F_cx; 
+        qdot = z(6:10);
+    end
 end
 
 function tau = control_law(t,z,p)
@@ -208,14 +246,13 @@ function dz = dynamics(t,z,p)
     
     z(5) = ankle_constraint(z);
     
-    if QFc ~= 0
-        t1= z(3);
-        t2 = z(4);
-        td1 = -pi/4;
-        td2 = pi/2;
-        k= 100;
-        tau = [k*(td1-t1);k*(td2-t2);0];
-    end
+    t1= z(3);
+    t2 = z(4);
+    td1 = -pi/4;
+    td2 = pi/2;
+    K= 100;
+    D=5;
+    tau = [K*(td1-t1)+D*-t1;K*(td2-t2)+D*-t2; 0];
    
     % Get b = Q - V(q,qd) - G(q)
     b = b_leg(z,tau,p);
