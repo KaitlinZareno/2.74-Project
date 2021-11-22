@@ -1,14 +1,14 @@
 function simulate_system_leg()
 
-     %% Definte fixed paramters
+    %% Definte fixed paramters
     m0 = 0.03; %MASS OF BOOM, ETC
     m1 =.0393 + .2;         m2 =.0368; 
     m3 = .00783;            m4 = .0155;
-    m5 = .00283;            
+    m5 = .00283;
     
     I1 = 25.1 * 10^-6;      I2 = 53.5 * 10^-6;
     I3 = 9.25 * 10^-6;      I4 = 22.176 * 10^-6;
-    I5 = 1876 * 10^-9;      
+    I5 = 1876 * 10^-9;
     
     l_OA=.011;              l_OB=.042; 
     l_AC=.096;              l_DE=.091;
@@ -23,7 +23,6 @@ function simulate_system_leg()
     ls = .13;
     l_C_s = .06;
     
-    
     N = 18.75;
     Ir = 0.0035/N^2;
     g = 9.81;
@@ -31,15 +30,15 @@ function simulate_system_leg()
     k=1;
     
     restitution_coeff = 0.;
-    friction_coeff = 1000;
+    friction_coeff = 100;
     ground_height = 0;
     
     %% Parameter vector
     p   = [m0 m1 m2 m3 m4 m5 ms I1 I2 I3 I4 I5 Is Ir N l_O_m1 l_B_m2 l_A_m3 l_C_m4 c5 l_OA l_OB l_AC l_DE l_IG l_GH l_heela ls l_C_s g k]';        % parameters
-
+    
     %% Perform Dynamic simulation
-    dt = 0.001;
-    tf = 3;
+    dt = 0.0001;
+    tf = 1;
     num_step = floor(tf/dt);
     tspan = linspace(0, tf, num_step); 
     z0 = [0; .25; -pi/4; pi/2; 0; 0; 0; 0; 0; 0; 0; 0]; %moves with x velocity!
@@ -50,16 +49,17 @@ function simulate_system_leg()
     condition = zeros(1,num_step); 
     
     for i=1:num_step-1
-        dz = dynamics(tspan(i), z_out(:,i), p);
+        dz = dynamics(tspan(i), z_out(:,i), p,friction_coeff);
         z_out(:,i+1) = z_out(:,i) + dz*dt; 
         %discrete impact
          [z_out(7:12,i+1), condition(i)] = discrete_impact_contact(z_out(:,i+1),p, restitution_coeff, friction_coeff, ground_height);
         z_out(1:6,i+1) = z_out(1:6,i) + z_out(7:12,i+1)*dt; %CHECK
+        z_out([5 11], i+1) = ankle_constraint(z_out(:,i+1));
         v = velocity_toe(z_out(:,i),p); 
         
         %debugging statements
         vx(i) = v(1); 
-        disp(num2str(i*dt)); 
+         
     end
 
     %% Compute Energy
@@ -116,72 +116,47 @@ end
 
 function [qdot, c] = discrete_impact_contact(z,p, rest_coeff, fric_coeff, yC)
 
+    %get the necessary vals
+    qdot = z(7:12); 
+    rToe = position_toe(z,p); 
+    rToe = rToe(2); 
+    rHeel = position_heel(z,p);
+    rHeel = rHeel(2); 
+    vToe  = velocity_toe(z,p);  
+    vToex = vToe(1);
+    vToe = vToe(2);
+    vHeel = velocity_heel(z,p); 
+    vHeelx = vHeel(1); 
+    vHeel = vHeel(2); 
+      
+
     %who is in contact w/ ground?
-    %TOE CONTACT
-    y = position_toe(z,p); 
-    y = -y(2);
-    y_dot = velocity_toe(z,p);
-    Cy = y-yC;
-    Cy_dot = y_dot(2);
-    
-    %HEEL CONTACT
-    y2 = position_heel(z,p); 
-    y2 = -y2(2);
-    y_dot2 = velocity_heel(z,p);
-    Cy2 = y2-yC;
-    Cy_dot2 = y_dot2(2); 
-  
-        
-    if (Cy <= 0 && Cy_dot <= 0)
-        c =1; 
-        disp('toe touching');
-        
-        J = jacobian_toe(z,p);
-        Mm = A_leg(z,p);
-
-        lamY = inv(J(2,:)*inv(Mm)*J(2,:)');
-        lamX = inv(J(1,:)*inv(Mm)*J(1,:)');
-        
-        %update y dir
-        F_cy = lamY*(-rest_coeff*Cy_dot-(J(2,:)*z(7:12)));
-        z(7:12) = z(7:12) + inv(Mm)*J(2,:)'*F_cy;
-        %update x dir
-        F_cx = lamX*(0-J(1,:)*z(7:12));
-        %truncate if necessary
-        if (F_cx > fric_coeff*F_cy)
-            F_cx = fric_coeff*F_cy;
-        elseif (-F_cx < -fric_coeff*F_cy)
-            F_cx = -fric_coeff*F_cy;
-        end
-        z(7:12) = z(7:12) + inv(Mm)*J(1,:)'*F_cx; 
-        qdot = z(7:12);
-    elseif (Cy2 <= 0 && Cy_dot2 <= 0)
-        c =2;
-        disp('heel touching');
-        J = jacobian_heel(z,p);
-        Mm = A_leg(z,p);
-
-        lamY = inv(J(2,:)*inv(Mm)*J(2,:)');
-        lamX = inv(J(1,:)*inv(Mm)*J(1,:)');
-        
-        %update y dir
-        F_cy = lamY*(-rest_coeff*Cy_dot2-(J(2,:)*z(7:12)));
-        z(7:12) = z(7:12) + inv(Mm)*J(2,:)'*F_cy;
-        %update x dir
-        F_cx = lamX*(0-J(1,:)*z(7:12));
-        %truncate if necessary
-        if (F_cx > fric_coeff*F_cy)
-            F_cx = fric_coeff*F_cy;
-        elseif (-F_cx < -fric_coeff*F_cy)
-            F_cx = -fric_coeff*F_cy;
-        end
-        z(7:12) = z(7:12) + inv(Mm)*J(1,:)'*F_cx; 
-        qdot = z(7:12);
-    else
-        c=3; 
-        disp('no contact'); 
-        qdot = z(7:12); 
+    if (rToe < 0 && vToe < 0)
+        J  = jacobian_toe(z,p); 
+        J = J(1,:); 
+      M = A_leg(z,p);
+      Ainv = inv(M);
+      
+      lambda_z = 1/(J * Ainv * J.');
+        F_z = lambda_z*(0 - vToex); 
+        qdot = qdot + Ainv*J.'*F_z;
+    elseif(rHeel < 0 && vHeel < 0)
+         J = jacobian_heel(z,p); 
+         J = J(1,:); 
+         
+          M = A_leg(z,p);
+      Ainv = inv(M);
+      
+      lambda_z = 1/(J * Ainv * J.');
+         
+         F_z = lambda_z*(0 - vHeelx); 
+         qdot = qdot + Ainv*J.'*F_z;
     end
+    
+  
+    c = 1;
+    
+    
 end
 
 function tau = control_law(t,z,p)
@@ -200,19 +175,19 @@ function tau = control_law(t,z,p)
    rE = position_ankle(z,p); %THIS VALUE NOT HAPPY
     % b. Compute J, the jacobian of r_E
    jE = jacobian_ankle(z,p); %THIS VALUE NOT HAPPY
-   jE = jE(:, 4:end); % # OF CONTROLS?
+   jE = jE(:, 3:end);
    vF = velocity_ankle(z,p);
-   rEd = [0.05; 0.05; 0 ; 0]; %TRACK SINUSOID , make point g move in an ellipse
+   rEd = [0.05; 0.05; 0]; %TRACK SINUSOID , make point g move in an ellipse
 
-   tau = -transpose(jE)*[K_x*(rE(1)-rEd(1))+D_x*vF(1);K_y*(rE(2)-rEd(2))+D_y*vF(2); 0 ; 0];  %DAMPING
+   tau = -transpose(jE)*[K_x*(rE(1)-rEd(1))+D_x*vF(1);K_y*(rE(2)-rEd(2))+D_y*vF(2); 0];  %DAMPING
 end
 
 
 function Fc = contact_force_toe(z,p)
 
     %% Fixed parameters for contact
-    K_c = 2*10^4;
-    D_c = 5;
+    K_c = 100000;
+    D_c = 30;
     yC  = 0;
     
     %% STEPS TO COMPLETE PROBLEM 2.1
@@ -237,8 +212,8 @@ end
 function Fh = contact_force_heel(z,p)
 
     %% Fixed parameters for contact
-    K_c = 2*10^4;
-    D_c = 5;
+    K_c = 10000;
+    D_c = 30;
     yC  = 0;
     
     %% STEPS TO COMPLETE PROBLEM 2.1
@@ -260,19 +235,18 @@ function Fh = contact_force_heel(z,p)
     end 
 end
 
-function Ankle_Res = ankle_constraint(z,p)
-    %make sure the position of the heel is always to the left of that of
-    %the ankle -- can't go past the vector of the ankle
-
+function Ankle_Res = ankle_constraint(z)
     th3 = z(5);
-    th1 = z(3);
-    if th3 <= 0
-        th3=0.;
+    dth3 = z(11); 
+    if th3 <= -pi/12
+        th3=pi/6;
+        dth3 = 0; 
     end
-    if th3 > pi/8
-        th3= pi/8;
+    if th3 > pi/2
+        th3= pi/2;
+        dth3 =  0;  
     end
-	Ankle_Res = th3;
+	Ankle_Res = [th3, dth3];
 end
 
 
@@ -285,7 +259,7 @@ function Tauc = joint_limit_torque(z,p)
 end
 
 
-function dz = dynamics(t,z,p)
+function dz = dynamics(t,z,p,mu)
 %     x = z(1);        y= z(2)      
 %    th1 = z(3);     th2 = z(4);      th3 = z(5);
 %     
@@ -293,14 +267,12 @@ function dz = dynamics(t,z,p)
 %     dth1 = z(7);  dth2= z(8);      dth3 = z(9);
     
     % Get mass matrix
-    A = A_leg(z,p)
+    A = A_leg(z,p);
     
     % Compute Controls
     %tau = control_law(t,z,p); %tau EXPLODING WITH CONTROLS
     tau = [0;0;0;0]; 
-    
-%     % Get b = Q - V(q,qd) - G(q)
-%     b = b_leg(z,tau,p); 
+
   
     % Compute the contact force (used for problem 2)
     Fc = contact_force_toe(z,p);
@@ -308,30 +280,38 @@ function dz = dynamics(t,z,p)
    
     J_toe = jacobian_toe(z,p);
     J_heel = jacobian_heel(z,p);
+        
     % Compute the contribution of the contact force to the generalied force
     QFc_t=  transpose(J_toe)*[0;Fc;0];
     QFc_h=  transpose(J_heel)*[0;Fh;0];
     QFc = QFc_t +  QFc_h; 
     
-    z(5) = ankle_constraint(z,p);
-    %controls
     t1= z(3);
     t2 = z(4);
     td1 = -pi/4;
     td2 = pi/2;
+    K= 150;
+    D=10;
+    
+    %swing leg
     ts = z(6);
-    tsd = 0;
+    tds = -t1;
+    Ks = 100;
+    Ds = 50;
     
-    K= 100;
-    D=5;
-    tau = [K*(td1-t1)+D*-t1;K*(td2-t2)+D*-t2; 0 ; K*(tsd-ts)+D*-ts];
     
+    
+    %0.025*cos(w*t); -0.125+0.025*sin(w*t)
+    
+    %pd controller for hip of swing leg to match that of the stance leg
+    tau = [K*(td1-t1)+D*-t1; K*(td2-t2)+D*-t2; 0 ; Ks*(tds-ts)+Ds*-ts];
+   
     % Get b = Q - V(q,qd) - G(q)
-    b = b_leg(z,tau,p)
+    b = b_leg(z,tau,p);
     
     % Compute the contact force (used for problem 2.5)
     Tauc = joint_limit_torque(z,p);
-    QTauc= [0; 0; 0; 0;0;0]; %column vector
+    QTauc= [0; 0; 0; 0; 0 ; 0]; %column vector
     
     % Solve for qdd.
     qdd = A\(b + QFc + QTauc);
@@ -354,6 +334,7 @@ function animateSol(tspan, x,p)
     %THIS IS OUR ANKLE SPRING
     h_ankle = plot([0],[0],'LineWidth',0.5);
     
+    %swing leg
     h_swing = plot([0],[0],'LineWidth',0.5);
    
     
@@ -366,8 +347,8 @@ function animateSol(tspan, x,p)
     %Step through and update animation
     for i = 1:length(tspan)
         % skip frame.
-        if mod(i,10)
-            continue;
+        if mod(i,30)
+            continue
         end
         t = tspan(i);
         z = x(:,i); 
@@ -413,6 +394,6 @@ function animateSol(tspan, x,p)
         set(h_swing, 'XData' , [r0(1) r_swing(1)] );
         set(h_swing, 'YData' , [r0(2) r_swing(2)] );
 
-        pause(.05)
+        pause(.08)
     end
 end
