@@ -41,7 +41,7 @@ function simulate_system_leg()
     tf = 1;
     num_step = floor(tf/dt);
     tspan = linspace(0, tf, num_step); 
-    z0 = [0; .25; -pi/4; pi/2; 0; 0; 0; 0; 0; 0; 0; 0]; %moves with x velocity!
+    z0 = [0; .20; -pi/4; pi/2; 0; 0; 0; 0; 0; 0; 0; 0]; %moves with x velocity!
     z_out = zeros(12,num_step);
     z_out(:,1) = z0;
     %debugging
@@ -54,7 +54,7 @@ function simulate_system_leg()
         %discrete impact
          [z_out(7:12,i+1), condition(i)] = discrete_impact_contact(z_out(:,i+1),p, restitution_coeff, friction_coeff, ground_height);
         z_out(1:6,i+1) = z_out(1:6,i) + z_out(7:12,i+1)*dt; %CHECK
-        z_out([7 12], i+1) = ankle_constraint(z_out(:,i+1));
+        z_out([5 11], i+1) = ankle_constraint(z_out(:,i+1));
         v = velocity_toe(z_out(:,i),p); 
         
         %debugging statements
@@ -112,6 +112,10 @@ function simulate_system_leg()
     %plot([-.2 .2],[-.125 -.125],'k'); 
     
     animateSol(tspan,z_out,p);
+    TH = 0:.1:2*pi;
+    xunit = 0.025 * cos(w) + x;
+    yunit = 0.025 * sin(th) + y;
+    plot(xunit, yunit);
 end
 
 function [qdot, c] = discrete_impact_contact(z,p, rest_coeff, fric_coeff, yC)
@@ -271,10 +275,8 @@ function dz = dynamics(t,z,p,mu)
     
     % Compute Controls
     %tau = control_law(t,z,p); %tau EXPLODING WITH CONTROLS
-    tau = [0;0;0 ; 0]; 
-    
-%     % Get b = Q - V(q,qd) - G(q)
-%     b = b_leg(z,tau,p); 
+    tau = [0;0;0;0]; 
+
   
     % Compute the contact force (used for problem 2)
     Fc = contact_force_toe(z,p);
@@ -287,18 +289,26 @@ function dz = dynamics(t,z,p,mu)
     QFc_t=  transpose(J_toe)*[0;Fc;0];
     QFc_h=  transpose(J_heel)*[0;Fh;0];
     QFc = QFc_t +  QFc_h; 
-
     
     t1= z(3);
     t2 = z(4);
     td1 = -pi/4;
     td2 = pi/2;
-    ts = z(6);
-    tds = t1;
     K= 150;
     D=10;
+    
+    %swing leg
+    ts = z(6);
+    tds = -t1;
+    Ks = 100;
+    Ds = 50;
+    
+    w=3;
+    
+    %0.025*cos(w*t); -0.125+0.025*sin(w*t)
+    
     %pd controller for hip of swing leg to match that of the stance leg
-    tau = [K*(td1-t1)+D*-t1; K*(td2-t2)+D*-t2; 0 ; 0];
+    tau = [0.025*cos(w*t); 0+0.025*sin(w*t); 0 ; Ks*(tds-ts)+Ds*-ts];
    
     % Get b = Q - V(q,qd) - G(q)
     b = b_leg(z,tau,p);
@@ -330,6 +340,8 @@ function animateSol(tspan, x,p)
     
     %swing leg
     h_swing = plot([0],[0],'LineWidth',0.5);
+
+    ground  = plot([0],[0],'LineWidth',0.3);
    
     
     xlabel('x'); ylabel('y');
@@ -388,6 +400,9 @@ function animateSol(tspan, x,p)
         set(h_swing, 'XData' , [r0(1) r_swing(1)] );
         set(h_swing, 'YData' , [r0(2) r_swing(2)] );
 
-        pause(.05)
+        %Ground
+        set(ground, 'XData' , [-2 2] );
+        set(ground, 'YData' , [0 0] );
+        pause(.08)
     end
 end
