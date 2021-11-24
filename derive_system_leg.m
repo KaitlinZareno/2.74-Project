@@ -27,7 +27,7 @@ th1hat = sin(th1)*ihat - cos(th1)*jhat;
 th2hat = sin(th2 + th1)*ihat - cos(th2 + th1)*jhat;
 th3hat = sin(th3 + th2 + th1)*ihat - cos(th3+ th2 + th1)*jhat;
 
-thshat = sin(ths)*ihat - cos(ths)*jhat;; %WANT SWING LEG TO BE THE MIRROR IMAGE OF TH1
+thshat = sin(ths)*ihat - cos(ths)*jhat; %WANT SWING LEG TO BE THE MIRROR IMAGE OF TH1
 % ---------------------------------- %
 
 ddt = @(r) jacobian(r,[q;dq])*[dq;ddq]; % a handy anonymous function for taking time derivatives
@@ -84,8 +84,7 @@ vS = ddt(rMs);
 F2Q = @(F,r) simplify(jacobian(r,q)'*(F));    % force contributions to generalized forces
 M2Q = @(M,w) simplify(jacobian(w,dq)'*(M));   % moment contributions to generalized forces
 
-% [DEFINE LINEAR AND ANGULAR VELOCITIES HERE] %
-
+%KINETIC ENERGY
 T0 = (1/2)*m0*dot(vR0', vR0); %INCLUDE ANOTHER ROTATIONAL INTERTIA THING FOR BOOM?
 T1 = (1/2)*m1*dot(vM1', vM1)+ (1/2)*(I1)*dth1^2; 
 T2 = (1/2)*m2*dot(vM2', vM2)+ (1/2)*(I2)*dth2^2;
@@ -94,18 +93,18 @@ T4 = (1/2)*m4*dot(vM4', vM4)+ (1/2)*(I4)*dth1^2;
 
 T5 = (1/2)*m5*dot(vM5', vM5)+ (1/2)*(I5)*dth3^2;
 
-
 %SWING LEG
 Ts = (1/2)*ms*dot(vS', vS)+ (1/2)*(Is)*dths^2;
 
+%ROTOR INERTIA ENERGY
+T1r = (1/2)*Ir*(N*dth1)^2;
+T2r = (1/2)*Ir*(dth1 + N*dth2)^2;
+T3r = (1/2)*Ir*(dth1 + dth2 + N*dth3)^2;
+Tsr = (1/2)*Ir*(dth1 + dth2 + dth3 + N*dths)^2;
 
 % ---------------------------------- %
 
-% Compute kinetic energy about rotational movement
-% Note: Don't forget computing kinetic energy for rotor inertias 
-
-% Compute potential energy
-
+%POTENTIAL ENERGY
 P1 = m1*g*dot(rM1,jhat);
 P2 = m2*g*dot(rM2,jhat);
 P3 = m3*g*dot(rM3,jhat);
@@ -119,10 +118,8 @@ Pkx = 1/2*k*(dot(rI,ihat)^2-dot(r_heela,ihat)^2);
 %SWING LEG
 Ps = ms*g*dot(rMs,jhat);
 
-% Compute entire system energy
-%T = simplify(T1 + T2 + T3 + T4 +T5); 
-T = simplify(T0 + T1 + T2 + T3 + T4 + T5 + Ts); %with x movement
-%V = P1+P2+P3+P4+P5;
+% Compute entire system energy 
+T = simplify(T0 + T1 + T2 + T3 + T4 + T5 + Ts + T1r + T2r + T3r+ Tsr); %with x movement
 V = P1+P2+P3+P4+P5+Pky+Pkx + Ps;
 
 % Find Generalized forces
@@ -132,6 +129,7 @@ Q_tau2 = M2Q(tau2*khat,dth2*khat);
 Q_tau3 = M2Q(tau3*khat,dth3*khat);
 %swing
 Q_taus = M2Q(taus*khat,dths*khat);
+% Q_tau2R= M2Q(-tau2*khat,omega1*khat); %WHAT IS THIS
 
 Q = Q_tau1 + Q_tau2 + Q_tau3 + Q_taus;
 
@@ -142,17 +140,26 @@ keypoints = [r0(1:2) rA(1:2) rB(1:2) rC(1:2) rD(1:2) rE(1:2) rI(1:2) rH(1:2) r_h
 % Derive Energy Function and Equations of Motion
 E = T+V;
 L = T-V;
-g = ddt(jacobian(L,dq).') - jacobian(L,q).' - Q;
+eom = ddt(jacobian(L,dq).') - jacobian(L,q).' - Q;
 
 % Rearrange Equations of Motion
-A = jacobian(g,ddq);
-b = A*ddq - g;
+A = jacobian(eom,ddq);
+b = A*ddq - eom;
+
+% Equations of motion are
+% eom = A *ddq + (coriolis term) + (gravitational term) - Q = 0
+Mass_Joint_Sp = A;
+Grav_Joint_Sp = simplify(jacobian(V, q)');
+Corr_Joint_Sp = simplify( eom + Q - Grav_Joint_Sp - A*ddq);
 
 % Write Energy Function and Equations of Motion
 z  = [q ; dq];
 matlabFunction(A,'file',['A_' name],'vars',{z p});
 matlabFunction(b,'file',['b_' name],'vars',{z u p});
 matlabFunction(E,'file',['energy_' name],'vars',{z p});
+matlabFunction(Grav_Joint_Sp ,'file', ['Grav_leg'] ,'vars',{z p});
+matlabFunction(Corr_Joint_Sp ,'file', ['Corr_leg']     ,'vars',{z p});
+matlabFunction(keypoints,'file',['keypoints_' name],'vars',{z p});
 
 %toe 
 matlabFunction(rH,'file',['position_toe'],'vars',{z p}); 
