@@ -162,29 +162,54 @@ matlabFunction(Corr_Joint_Sp ,'file', ['Corr_leg']     ,'vars',{z p});
 matlabFunction(keypoints,'file',['keypoints_' name],'vars',{z p});
 
 %toe 
+Jtoe = jacobian(rH,q);
+dJtoe= reshape( ddt(Jtoe(:)) , size(Jtoe) );
+
+% Jtoe  = Jtoe(1:2,1:6);
+% dJtoe = dJtoe(1:2,1:6);
+
 matlabFunction(rH,'file',['position_toe'],'vars',{z p}); 
 matlabFunction(drH,'file',['velocity_toe'],'vars',{z p});
-Jtoe = jacobian(rH,q);
 matlabFunction(Jtoe,'file',['jacobian_toe'],'vars',{z p});
+matlabFunction(dJtoe ,'file',['jacobian_dot_toe'],'vars',{z p});
+
 %heel 
+Jheel = jacobian(rI,q);
+dJheel= reshape( ddt(Jheel(:)) , size(Jheel) );
+
+% Jheel  = Jheel(1:2,1:6);
+% dJheel = dJheel(1:2,1:6);
+
 matlabFunction(rI,'file',['position_heel'],'vars',{z p});
 matlabFunction(drI,'file',['velocity_heel'],'vars',{z p});
-Jheel= jacobian(rI,q);
 matlabFunction(Jheel,'file',['jacobian_heel'],'vars',{z p});
+matlabFunction(dJheel ,'file',['jacobian_dot_heel'],'vars',{z p});
 
 %heel attachment 
 matlabFunction(r_heela,'file',['position_heel_attachment'],'vars',{z p});
 
 %ankle 
+Jankle = jacobian(rE,q);
+dJankle= reshape( ddt(Jankle(:)) , size(Jankle) );
+
+% Jankle  = J(1:2,1:6);
+% dJankle = dJ(1:2,1:6);
+
 matlabFunction(rE,'file',['position_ankle'],'vars',{z p});
 matlabFunction(drE,'file',['velocity_ankle'],'vars',{z p});
-Jankle= jacobian(rE,q);
 matlabFunction(Jankle,'file',['jacobian_ankle'],'vars',{z p});
+matlabFunction(dJankle,'file',['jacobian_dot_ankle'],'vars',{z p});
 
 %Swing leg toe
+Jswing = jacobian(rH,q);
+dJswing= reshape( ddt(Jswing(:)) , size(Jswing) );
+
+% Jswing  = Jswing(1:2,1:6);
+% dJswing = dJswing(1:2,1:6);
+
 matlabFunction(rHs,'file',['position_toe_swing'],'vars',{z p}); 
 matlabFunction(drHs,'file',['velocity_toe_swing'],'vars',{z p});
-Jtoes = jacobian(rHs,q);
-matlabFunction(Jtoes,'file',['jacobian_toe_swing'],'vars',{z p});
+matlabFunction(Jswing,'file',['jacobian_toe_swing'],'vars',{z p});
+matlabFunction(dJswing ,'file',['jacobian_dot_swing'],'vars',{z p});
 
 matlabFunction(keypoints,'file',['keypoints_' name],'vars',{z p});
