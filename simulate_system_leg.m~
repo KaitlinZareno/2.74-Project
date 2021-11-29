@@ -10,7 +10,7 @@ function simulate_leg()
     I5 = 1876 * 10^-9;
     
     l_OA=.011;              l_OB=.042; 
-    l_AC=.096;              l_DE=.091;
+    l_AC=.096;              l_DE=.0897;
     l_IG = 0.01;            l_GH = 0.03;            l_heela = 0.09;
     l_O_m1=0.032;           l_B_m2=0.0344; 
     l_A_m3=0.0622;          l_C_m4=0.0610;
@@ -111,7 +111,7 @@ function simulate_leg()
     
     %PLOT ANGULAR VELOCITY
     figure(5)
-    plot(tspan,z_out(3:4,:)*180/pi)
+    plot(tspan,z_out(6:12,:)*180/pi) %LINE MIGHT BE 3:4
     legend('q1dot','q2dot');
     xlabel('Time (s)');
     ylabel('Angular Velocity (deg/sec)');
@@ -187,8 +187,10 @@ function tau = control_law(t, z, p, p_traj)
 %     f(1:2) = Lambda*(aEd(1:2) + f(1:2)) + rho; % OSC w/o mu (coriolis)
 %     f(1:2) = Lambda*(aEd(1:2) + f(1:2)) + mu; % OSC w/o rho (gravity)
     
-    % Map to joint torques  
-    tau = J' * f(1:2); %am i allowed to do this
+    % Map to joint torques
+    tau = pinv(J(:,1:4))*f(1:2);
+    tau[:,3:4]= 
+    %tau = inv(J(:,1:4)'*J(:,1:4))*J(:,1:4)' * f(1:2) %take jacobian pseudo inverse??
 end
 
 
