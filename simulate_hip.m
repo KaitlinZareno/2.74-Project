@@ -145,54 +145,17 @@ function tau = control_law(t, z, p, p_traj)
 %     % Compute desired velocity of foot
     v0d = [p_traj.rx*-sin(omega_swing*t)*omega_swing ...
            p_traj.ry* cos(omega_swing*t)*omega_swing   0]';
-%     % Desired acceleration
-%     a0d = p_traj.r*[-cos(omega_swing*t)*omega_swing^2 ...
-%                     -sin(omega_swing*t)*omega_swing^2 0]';
-    
-    % Actual position and velocity 
+
     r0 = position_hip(z,p);
     v0 = velocity_hip(z,p);
     
     tds = -z(1);
     ts = z(3);
-    ws = 0;
-    % Jacobian matrix \partial r_E / \partial q
-%     J  = jacobian_hip(z,p);
-%     dJ = jacobian_dot_hip(z,p);
-%     dq = z(4:6);
-
+    ws = 0; %CHANGING WS GIVES SINGULAR MATRIX
+    
     tau = [K_x * (r0d(1) - r0(1) ) + D_x * (v0d(1) - v0(1) ) ;
-           K_y * (r0d(2) - r0(2) ) + D_y * (v0d(2) - v0(2) ); K_s * (tds - ts) + D_s * -ws];
+           K_y * (r0d(2) - r0(2) ) + D_y * (v0d(2) - v0(2) ); K_s * (tds - ts) + D_s * -(v0d(3) - v0(3))];
       
-       
-%     % Compute virtual foce for Question 1.4 and 1.5
-%     f  = [K_x * (r0d(1) - r0(1) ) + D_x * (v0d(1) - v0(1) ) ;
-%           K_y * (r0d(2) - r0(2) ) + D_y * (v0d(2) - v0(2) ) ; 0];
-%     
-%     %% Task-space compensation and feed forward for Question 1.8
-%     % Get joint space components of equations of motion
-%     Mass_Joint_Sp = A_leg(z,p);
-%     Grav_Joint_Sp = Grav_leg(z,p);
-%     Corr_Joint_Sp = Corr_leg(z,p);
-% 
-%     Mass_Joint_Sp_inv = inv(Mass_Joint_Sp);
-%     % Task-space mass matrix (Equaiton 51 in Khatib's paper)
-%     Lambda = inv(J * Mass_Joint_Sp_inv * J');
-%     
-%     % Coriolis force in task-space (Equation 51)
-%     mu     = Lambda*J*Mass_Joint_Sp_inv* Corr_Joint_Sp - Lambda * dJ * dq;
-%     
-%     % Gravity force in task-space (Equation 51)
-%     rho    = Lambda*J*Mass_Joint_Sp_inv * Grav_Joint_Sp; 
-%     
-%     % Add task-space acceleration force feedforward, coriolis, and gravity compensation 
-%     % NEED X AND Y COMPONENT ONLY
-%     f(1:2) = Lambda*(a0d(1:2) + f(1:2)) + mu + rho; % OSC  
-% %     f(1:2) = Lambda*(aEd(1:2) + f(1:2)) + rho; % OSC w/o mu (coriolis)
-% %     f(1:2) = Lambda*(aEd(1:2) + f(1:2)) + mu; % OSC w/o rho (gravity)
-%     
-%     % Map to joint torques  
-%     tau = inv(J(:,1:4)'*J(:,1:4))*J(:,1:4)' * f(1:2); %take jacobian pseudo inverse??
 end
 
 
