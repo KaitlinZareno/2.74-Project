@@ -55,8 +55,8 @@ r0 = rB + l_OB*th1hat;
 r_m4 = rB + l_m4 *th1hat;
 
 %SWING LEG
-rMs = l_ms*thshat;
-rHs = ls*thshat;
+rMs = r0 + l_ms*thshat;
+rHs = r0 + ls*thshat;
 
 %CALCULATE DERIVATIVES
 %velocity

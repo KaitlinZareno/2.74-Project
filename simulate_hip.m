@@ -10,9 +10,9 @@ function simulate_leg()
     I5 = 1876 * 10^-9;
     
     l_OA=.011;              l_OB=.042; 
-    l_AC=.1;                l_DE=.0897;
-    l_CE=.1;
-    l_IG = 0.01;            l_GH = 0.03;            l_heela = 0.09;
+    l_AC=.096;                l_DE=.0897;
+    l_CE=.122;
+    l_IG = 0.01;            l_GH = 0.03;            l_heela = 0.03;
     l_m1=0.032;             l_m2=0.0344; 
     l_m3=0.0622;            l_m4=0.0610;
     c5=0.01;
@@ -25,7 +25,7 @@ function simulate_leg()
     
     N = 18.75;
     Ir = 0.0035/N^2;
-    g = 9.81;
+    g = -9.81;
     %=0;
     k=1;   
     
@@ -38,16 +38,17 @@ function simulate_leg()
     
     %% Simulation Parameters Set 2 -- Operational Space Control
     p_traj.omega = 15;
-    p_traj.x_0   = -0.02;
-    p_traj.y_0   = 0;
-    p_traj.r     = 0.025;
+    p_traj.x_0   = 0.05;
+    p_traj.y_0   = .16;
+    p_traj.rx    = 0.05;
+    p_traj.ry    = 0.025;
     
     %% Perform Dynamic simulation
     dt = 0.001;
     tf = 5;
     num_step = floor(tf/dt);
     tspan = linspace(0, tf, num_step); 
-    z0 = [-pi/3; pi/2; 0; 0; 0; 0];
+    z0 = [-pi/4; pi/2; pi/4; 0; 0; 0];
     z_out = zeros(6,num_step);
     z_out(:,1) = z0;
     for i=1:num_step-1
@@ -80,9 +81,9 @@ function simulate_leg()
     figure(2); clf;
     plot(tspan,r0(1,:),'r','LineWidth',2)
     hold on
-    plot(tspan,p_traj.x_0 + p_traj.r * cos(p_traj.omega*tspan) ,'r--');
+    plot(tspan,p_traj.x_0 + p_traj.rx * cos(p_traj.omega*tspan) ,'r--');
     plot(tspan,r0(2,:),'b','LineWidth',2)
-    plot(tspan,p_traj.y_0 + p_traj.r * sin(p_traj.omega*tspan) ,'b--');
+    plot(tspan,p_traj.y_0 + p_traj.ry * sin(p_traj.omega*tspan) ,'b--');
     
     
     xlabel('Time (s)'); ylabel('Position (m)'); legend({'x','x_d','y','y_d'});
@@ -117,8 +118,8 @@ function simulate_leg()
 
     % Target traj
     TH = 0:.1:2*pi;
-    plot( p_traj.x_0 + p_traj.r * cos(TH), ...
-          p_traj.y_0 + p_traj.r * sin(TH),'k--'); 
+    plot( p_traj.x_0 + p_traj.rx * cos(TH), ...
+          p_traj.y_0 + p_traj.ry * sin(TH),'k--'); 
     
     % Ground Q2.3
     plot([-.2 .2],[ground_height ground_height],'k'); 
@@ -130,58 +131,68 @@ function tau = control_law(t, z, p, p_traj)
     % Controller gains, Update as necessary for Problem 1
     K_x = 150.; % Spring stiffness X
     K_y = 150.; % Spring stiffness Y
+    K_s = 150.;
     D_x = 10.;  % Damping X
     D_y = 10.;  % Damping Y
+    D_s = 20.;
 
     % Desired position of foot is a circle
     % ONLY CONTROLLING HIP AND ANKLE
     omega_swing = p_traj.omega;
-    r0d = [p_traj.x_0 p_traj.y_0 0]' + ...
-            p_traj.r*[cos(omega_swing*t) sin(omega_swing*t) 0]';
-    % Compute desired velocity of foot
-    v0d = p_traj.r*[-sin(omega_swing*t)*omega_swing    ...
-                     cos(omega_swing*t)*omega_swing   0]';
-    % Desired acceleration
-    a0d = p_traj.r*[-cos(omega_swing*t)*omega_swing^2 ...
-                    -sin(omega_swing*t)*omega_swing^2 0]';
+    r0d = [p_traj.x_0 + p_traj.rx*cos(omega_swing*t) ...
+           p_traj.y_0 + p_traj.ry*sin(omega_swing*t) ...
+           z(1)];
+%     % Compute desired velocity of foot
+    v0d = [p_traj.rx*-sin(omega_swing*t)*omega_swing ...
+           p_traj.ry* cos(omega_swing*t)*omega_swing   0]';
+%     % Desired acceleration
+%     a0d = p_traj.r*[-cos(omega_swing*t)*omega_swing^2 ...
+%                     -sin(omega_swing*t)*omega_swing^2 0]';
     
     % Actual position and velocity 
     r0 = position_hip(z,p);
     v0 = velocity_hip(z,p);
     
+    tds = -z(1);
+    ts = z(3);
+    ws = 0;
     % Jacobian matrix \partial r_E / \partial q
-    J  = jacobian_hip(z,p);
-    dJ = jacobian_dot_hip(z,p);
-    dq = z(4:6);
+%     J  = jacobian_hip(z,p);
+%     dJ = jacobian_dot_hip(z,p);
+%     dq = z(4:6);
 
-    % Compute virtual foce for Question 1.4 and 1.5
-    f  = [K_x * (r0d(1) - r0(1) ) + D_x * (v0d(1) - v0(1) ) ;
-          K_y * (r0d(2) - r0(2) ) + D_y * (v0d(2) - v0(2) ) ; 0];
-    
-    %% Task-space compensation and feed forward for Question 1.8
-    % Get joint space components of equations of motion
-    Mass_Joint_Sp = A_leg(z,p);
-    Grav_Joint_Sp = Grav_leg(z,p);
-    Corr_Joint_Sp = Corr_leg(z,p);
-
-    Mass_Joint_Sp_inv = inv(Mass_Joint_Sp);
-    % Task-space mass matrix (Equaiton 51 in Khatib's paper)
-    Lambda = inv(J * Mass_Joint_Sp_inv * J');
-    
-    % Coriolis force in task-space (Equation 51)
-    mu     = Lambda*J*Mass_Joint_Sp_inv* Corr_Joint_Sp - Lambda * dJ * dq;
-    
-    % Gravity force in task-space (Equation 51)
-    rho    = Lambda*J*Mass_Joint_Sp_inv * Grav_Joint_Sp; 
-    
-    % Add task-space acceleration force feedforward, coriolis, and gravity compensation 
-    % NEED X AND Y COMPONENT ONLY
-    f(1:2) = Lambda*(a0d(1:2) + f(1:2)) + mu + rho; % OSC  
-%     f(1:2) = Lambda*(aEd(1:2) + f(1:2)) + rho; % OSC w/o mu (coriolis)
-%     f(1:2) = Lambda*(aEd(1:2) + f(1:2)) + mu; % OSC w/o rho (gravity)
-    
-    % Map to joint torques  
-    tau = inv(J(:,1:4)'*J(:,1:4))*J(:,1:4)' * f(1:2); %take jacobian pseudo inverse??
+    tau = [K_x * (r0d(1) - r0(1) ) + D_x * (v0d(1) - v0(1) ) ;
+           K_y * (r0d(2) - r0(2) ) + D_y * (v0d(2) - v0(2) ); K_s * (tds - ts) + D_s * -ws];
+      
+       
+%     % Compute virtual foce for Question 1.4 and 1.5
+%     f  = [K_x * (r0d(1) - r0(1) ) + D_x * (v0d(1) - v0(1) ) ;
+%           K_y * (r0d(2) - r0(2) ) + D_y * (v0d(2) - v0(2) ) ; 0];
+%     
+%     %% Task-space compensation and feed forward for Question 1.8
+%     % Get joint space components of equations of motion
+%     Mass_Joint_Sp = A_leg(z,p);
+%     Grav_Joint_Sp = Grav_leg(z,p);
+%     Corr_Joint_Sp = Corr_leg(z,p);
+% 
+%     Mass_Joint_Sp_inv = inv(Mass_Joint_Sp);
+%     % Task-space mass matrix (Equaiton 51 in Khatib's paper)
+%     Lambda = inv(J * Mass_Joint_Sp_inv * J');
+%     
+%     % Coriolis force in task-space (Equation 51)
+%     mu     = Lambda*J*Mass_Joint_Sp_inv* Corr_Joint_Sp - Lambda * dJ * dq;
+%     
+%     % Gravity force in task-space (Equation 51)
+%     rho    = Lambda*J*Mass_Joint_Sp_inv * Grav_Joint_Sp; 
+%     
+%     % Add task-space acceleration force feedforward, coriolis, and gravity compensation 
+%     % NEED X AND Y COMPONENT ONLY
+%     f(1:2) = Lambda*(a0d(1:2) + f(1:2)) + mu + rho; % OSC  
+% %     f(1:2) = Lambda*(aEd(1:2) + f(1:2)) + rho; % OSC w/o mu (coriolis)
+% %     f(1:2) = Lambda*(aEd(1:2) + f(1:2)) + mu; % OSC w/o rho (gravity)
+%     
+%     % Map to joint torques  
+%     tau = inv(J(:,1:4)'*J(:,1:4))*J(:,1:4)' * f(1:2); %take jacobian pseudo inverse??
 end
 
 
@@ -190,8 +201,8 @@ function dz = dynamics(t,z,p,p_traj)
     A = A_leg(z,p);
     
     % Compute Controls
-    %tau = control_law(t,z,p,p_traj);
-    tau = [0;0;0];
+    tau = control_law(t,z,p,p_traj);
+%     tau = [0;0;0];
     
     % Get b = Q - V(q,qd) - G(q)
     b = b_leg(z,tau,p);
@@ -258,6 +269,7 @@ function animateSol(tspan, x,p)
     %line to indicate the ground
     ground  = plot([0],[0],'LineWidth',0.3);
    
+    plot(0.05,0.17,'o')
     
     xlabel('x'); ylabel('y');
     h_title = title('t=0.0s');
@@ -310,12 +322,11 @@ function animateSol(tspan, x,p)
         
         set(h_B0,'XData',[rB(1) r0(1)]);
         set(h_B0,'YData',[rB(2) r0(2)]);
-%         
-%       
-%         
-%         %SWING LEG
-%         set(h_swing, 'XData' , [r0(1) r_swing(1)] );
-%         set(h_swing, 'YData' , [r0(2) r_swing(2)] );
+        
+        
+        %SWING LEG
+        set(h_swing, 'XData' , [r0(1) r_swing(1)] );
+        set(h_swing, 'YData' , [r0(2) r_swing(2)] );
 
         %Ground
          set(ground, 'XData' , [-2 2] );
