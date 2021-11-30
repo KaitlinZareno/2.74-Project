@@ -131,10 +131,10 @@ function tau = control_law(t, z, p, p_traj)
     % Controller gains, Update as necessary for Problem 1
     K_x = 150.; % Spring stiffness X
     K_y = 150.; % Spring stiffness Y
-    K_s = 150.;
+    K_s = 200.;
     D_x = 10.;  % Damping X
     D_y = 10.;  % Damping Y
-    D_s = 20.;
+    D_s = 30.;
     
     pos_hip = position_hip(z,p);
     v_hip = velocity_hip(z,p);
@@ -158,16 +158,22 @@ function tau = control_law(t, z, p, p_traj)
     v0 = velocity_hip(z,p);
     
     if pos_hip(1) < 0
-        tds = pi-desired_angle;
+        tds = 3*pi/2-desired_angle; %WHY THESE VALUES??
     else
-        tds = desired_angle;
+        tds = 0-desired_angle;
     end
+    
+    if abs(pos_hip(1)) > 0.09
+        wd= 0;
+    else
+        wd = v0d(2);
+    end
+    
     ts = z(3);
     vs = z(6);
-    ws = 0; %CHANGING WS GIVES SINGULAR MATRIX
     
     tau = [K_x * (r0d(1) - r0(1) ) + D_x * (v0d(1) - v0(1) ) ;
-           K_y * (r0d(2) - r0(2) ) + D_y * (v0d(2) - v0(2) ); K_s * (tds - ts) + D_s * (0-vs)];
+           K_y * (r0d(2) - r0(2) ) + D_y * (v0d(2) - v0(2) ); K_s * (tds - ts) + D_s * (wd-vs)];
       
 end
 
@@ -307,6 +313,6 @@ function animateSol(tspan, x,p)
         %Ground
          set(ground, 'XData' , [-2 2] );
          set(ground, 'YData' , [0 0] );
-         pause(.01)
+         pause(.02)
     end
 end
