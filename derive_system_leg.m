@@ -152,6 +152,7 @@ Mass_Joint_Sp = A;
 Grav_Joint_Sp = simplify(jacobian(V, q)');
 Corr_Joint_Sp = simplify( eom + Q - Grav_Joint_Sp - A*ddq);
 
+
 % Write Energy Function and Equations of Motion
 z  = [q ; dq];
 matlabFunction(A,'file',['A_' name],'vars',{z p});

@@ -25,7 +25,7 @@ function simulate_leg()
     N = 18.75;
     Ir = 0.0035/N^2;
     g = 9.81;
-    %=0;
+    g=0;
     k=1;   
     
     restitution_coeff = 0.5;
@@ -38,7 +38,7 @@ function simulate_leg()
     %% Simulation Parameters Set 2 -- Operational Space Control
     p_traj.omega = 15;
     p_traj.x_0   = -0.02;
-    p_traj.y_0   = 0;
+    p_traj.y_0   = 0.1;
     p_traj.r     = 0.025;
     
     %% Perform Dynamic simulation
@@ -46,7 +46,7 @@ function simulate_leg()
     tf = 5;
     num_step = floor(tf/dt);
     tspan = linspace(0, tf, num_step); 
-    z0 = [0; 0.23; -pi/4; pi/2; 0; 0; 0; 0; 0; 0; 0; 0];
+    z0 = [0; 0.25; -pi/4; pi/2; 0; 0; 0; 0; 0; 0; 0; 0];
     z_out = zeros(12,num_step);
     z_out(:,1) = z0;
     for i=1:num_step-1
@@ -56,7 +56,7 @@ function simulate_leg()
         
         % constraint handling (Velocity update)
         %z_out(3:4,i+1) = joint_limit_constraint(z_out(:,i+1),p);
-        z_out(7:12,i+1) = discrete_impact_contact(z_out(:,i+1), p, restitution_coeff, friction_coeff, ground_height);
+        %z_out(7:12,i+1) = discrete_impact_contact(z_out(:,i+1), p, restitution_coeff, friction_coeff, ground_height);
         
         % Position update
         z_out(1:6,i+1) = z_out(1:6,i) + z_out(7:12,i+1)*dt;
@@ -158,8 +158,8 @@ function tau = control_law(t, z, p, p_traj)
     
     % Jacobian matrix \partial r_E / \partial q
     J  = jacobian_ankle(z,p);
-    dJ = jacobian_dot_ankle(z,p);
-    dq = z(7:12);
+    dJ = jacobian_dot_ankle(z,p)
+    dq = z(7:12)
 
     % Compute virtual foce for Question 1.4 and 1.5
     f  = [K_x * (rEd(1) - rE(1) ) + D_x * (vEd(1) - vE(1) ) ;
@@ -176,20 +176,19 @@ function tau = control_law(t, z, p, p_traj)
     Lambda = inv(J * Mass_Joint_Sp_inv * J');
     
     % Coriolis force in task-space (Equation 51)
-    mu     = Lambda*J*Mass_Joint_Sp_inv* Corr_Joint_Sp - Lambda * dJ * dq;
+    mu     = Lambda*J*Mass_Joint_Sp_inv* Corr_Joint_Sp - (Lambda * dJ * dq);
     
     % Gravity force in task-space (Equation 51)
-    rho    = Lambda*J*Mass_Joint_Sp_inv * Grav_Joint_Sp; 
+    rho    = Lambda*J*Mass_Joint_Sp_inv * Grav_Joint_Sp;
     
     % Add task-space acceleration force feedforward, coriolis, and gravity compensation 
     % NEED X AND Y COMPONENT ONLY
-    f(1:2) = Lambda*(aEd(1:2) + f(1:2)) + mu + rho; % OSC  
-%     f(1:2) = Lambda*(aEd(1:2) + f(1:2)) + rho; % OSC w/o mu (coriolis)
+    %f(1:2) = Lambda*(aEd(1:2) + f(1:2)) + mu + rho; % OSC  
+    f(1:2) = Lambda*(aEd(1:2) + f(1:2)) + rho % OSC w/o mu (coriolis)
 %     f(1:2) = Lambda*(aEd(1:2) + f(1:2)) + mu; % OSC w/o rho (gravity)
     
     % Map to joint torques
-    tau = pinv(J(:,1:4))*f(1:2);
-    tau(3:4)= [0;0]
+    tau = pinv(J(:,3:6))*f(1:2)
     %tau = inv(J(:,1:4)'*J(:,1:4))*J(:,1:4)' * f(1:2) %take jacobian pseudo inverse??
 end
 

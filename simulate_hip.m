@@ -38,17 +38,17 @@ function simulate_leg()
     
     %% Simulation Parameters Set 2 -- Operational Space Control
     p_traj.omega = 15;
-    p_traj.x_0   = 0.05;
-    p_traj.y_0   = .16;
-    p_traj.rx    = 0.05;
-    p_traj.ry    = 0.025;
+    p_traj.x_0   = 0.0;
+    p_traj.y_0   = .17;
+    p_traj.rx    = 0.1;
+    p_traj.ry    = 0.015;
     
     %% Perform Dynamic simulation
-    dt = 0.001;
+    dt = 0.0001;
     tf = 5;
     num_step = floor(tf/dt);
     tspan = linspace(0, tf, num_step); 
-    z0 = [-pi/4; pi/2; pi/4; 0; 0; 0];
+    z0 = [-pi/2; pi/2; 3*pi/4; 0; 0; 0];
     z_out = zeros(6,num_step);
     z_out(:,1) = z0;
     for i=1:num_step-1
@@ -135,13 +135,21 @@ function tau = control_law(t, z, p, p_traj)
     D_x = 10.;  % Damping X
     D_y = 10.;  % Damping Y
     D_s = 20.;
+    
+    pos_hip = position_hip(z,p);
+    v_hip = velocity_hip(z,p);
+    
+    v1 = norm(pos_hip(1:2) - [0 0]);
+    
+    v2 = norm(pos_hip(2));
+    desired_angle = acos(v2/v1);
 
     % Desired position of foot is a circle
     % ONLY CONTROLLING HIP AND ANKLE
     omega_swing = p_traj.omega;
     r0d = [p_traj.x_0 + p_traj.rx*cos(omega_swing*t) ...
            p_traj.y_0 + p_traj.ry*sin(omega_swing*t) ...
-           z(1)];
+           0];
 %     % Compute desired velocity of foot
     v0d = [p_traj.rx*-sin(omega_swing*t)*omega_swing ...
            p_traj.ry* cos(omega_swing*t)*omega_swing   0]';
@@ -149,12 +157,17 @@ function tau = control_law(t, z, p, p_traj)
     r0 = position_hip(z,p);
     v0 = velocity_hip(z,p);
     
-    tds = -z(1);
+    if pos_hip(1) < 0
+        tds = pi-desired_angle;
+    else
+        tds = desired_angle;
+    end
     ts = z(3);
+    vs = z(6);
     ws = 0; %CHANGING WS GIVES SINGULAR MATRIX
     
     tau = [K_x * (r0d(1) - r0(1) ) + D_x * (v0d(1) - v0(1) ) ;
-           K_y * (r0d(2) - r0(2) ) + D_y * (v0d(2) - v0(2) ); K_s * (tds - ts) + D_s * -(v0d(3) - v0(3))];
+           K_y * (r0d(2) - r0(2) ) + D_y * (v0d(2) - v0(2) ); K_s * (tds - ts) + D_s * (0-vs)];
       
 end
 
@@ -294,6 +307,6 @@ function animateSol(tspan, x,p)
         %Ground
          set(ground, 'XData' , [-2 2] );
          set(ground, 'YData' , [0 0] );
-         pause(.05)
+         pause(.01)
     end
 end
