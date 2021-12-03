@@ -1,4 +1,4 @@
-function simulate_leg()
+function cost_of_transport_simulate_hip = cost_of_transport_simulate_hip(rx,ry)
     %% Definte fixed paramters
     m0 = 0.03; %MASS OF BOOM, ETC
     m1 =.0393 + .2;         m2 =.0368; 
@@ -20,7 +20,7 @@ function simulate_leg()
     %SWING LEG
     ms = .05;
     Is = 25.1 * 10^-6;
-    ls = .13;
+    ls = .18;
     l_ms = .06;
     
     N = 18.75;
@@ -37,22 +37,50 @@ function simulate_leg()
     
     
     %% Simulation Parameters Set 2 -- Operational Space Control
-    p_traj.omega = 15;
+    p_traj.omega = pi/2;
     p_traj.x_0   = 0.0;
-    p_traj.y_0   = .17;
-    p_traj.rx    = 0.08;
-    p_traj.ry    = 0.015;
+    p_traj.y_0   = .18;
+    p_traj.rx    = rx;
+    p_traj.ry    = ry;
+    p_traj.warmup = 0;
+    p_traj.tf = pi/p_traj.omega;
     
     %% Perform Dynamic simulation
-    dt = 0.001;
-    tf = 5;
+    dt = 0.0001;
+    tf = p_traj.tf;
     num_step = floor(tf/dt);
     tspan = linspace(0, tf, num_step); 
-    z0 = [-pi/2; pi/2; 3*pi/4; 0; 0; 0];
+    
+    y_epsilon = 1*10^-3;
+    x_epsilon = 1*10^-3;
+    
+    z0 = [-pi/4; pi/2; pi/4; 0; 0; 0];
+    z_warmup = zeros(6,num_step);
+    z_warmup(:,1) = z0;
+    r0d = [p_traj.x_0-p_traj.rx, p_traj.y_0];
+    hip_pos = zeros(2,6);
+    wi = 1;
+    
+    while abs(hip_pos(1)-r0d(1)) > x_epsilon && abs(hip_pos(2)-r0d(2)) > y_epsilon
+        [dz,tau] = dynamics(dt*(wi-1), z_warmup(:,wi), p, p_traj);
+        % Velocity update with dynamics
+        z_warmup(:,wi+1) = z_warmup(:,wi) + dz*dt;
+   
+        % Position update
+        z_warmup(1:3,wi+1) = z_warmup(1:3,wi) + z_warmup(4:6,wi+1)*dt;
+        hip_pos = position_hip(z_warmup(1:3,wi+1),p);
+        wi = wi+1;
+    end
+    
+    p_traj.warmup = 1;
     z_out = zeros(6,num_step);
-    z_out(:,1) = z0;
+    z_out(1:3,1) = z_warmup(1:3,wi-1);
+    taus = [];
+    
     for i=1:num_step-1
-        dz = dynamics(tspan(i), z_out(:,i), p, p_traj);
+        [dz,tau] = dynamics(tspan(i), z_out(:,i), p, p_traj);
+        %get tau for power calculation
+        taus = [taus, tau];
         % Velocity update with dynamics
         z_out(:,i+1) = z_out(:,i) + dz*dt;
         
@@ -66,49 +94,49 @@ function simulate_leg()
     
     %% Compute Energy
     E = energy_leg(z_out,p);
-    figure(1); clf
-    plot(tspan,E);xlabel('Time (s)'); ylabel('Energy (J)');
+%     figure(1); clf
+%     plot(tspan,E);xlabel('Time (s)'); ylabel('Energy (J)');
     
-    %% Compute foot position over time
-    r0 = zeros(3,length(tspan));
-    v0 = zeros(3,length(tspan));
-    for i = 1:length(tspan)
-        r0(:,i) = position_hip(z_out(:,i),p);
-        v0(:,i) = velocity_hip(z_out(:,i),p);
-    end
-    
-    %PLOT DESIRED HIP POSITION VS ACTUAL 
-    figure(2); clf;
-    plot(tspan,r0(1,:),'r','LineWidth',2)
-    hold on
-    plot(tspan,p_traj.x_0 + p_traj.rx * cos(p_traj.omega*tspan) ,'r--');
-    plot(tspan,r0(2,:),'b','LineWidth',2)
-    plot(tspan,p_traj.y_0 + p_traj.ry * sin(p_traj.omega*tspan) ,'b--');
-    
-    
-    xlabel('Time (s)'); ylabel('Position (m)'); legend({'x','x_d','y','y_d'});
-
-    %PLOT TIME VS VELOCITY
-    figure(3); clf;
-    plot(tspan,v0(1,:),'r','LineWidth',2)
-    hold on
-    plot(tspan,v0(2,:),'b','LineWidth',2)
-    
-    xlabel('Time (s)'); ylabel('Velocity (m)'); legend({'vel_x','vel_y'});
-    
-    %PLOT ANGLE 
-    figure(4)
-    plot(tspan,z_out(1:2,:)*180/pi)
-    legend('q1','q2');
-    xlabel('Time (s)');
-    ylabel('Angle (deg)');
-    
-    %PLOT ANGULAR VELOCITY
-    figure(5)
-    plot(tspan,z_out(3:4,:)*180/pi) %LINE MIGHT BE 4:6
-    legend('q1dot','q2dot');
-    xlabel('Time (s)');
-    ylabel('Angular Velocity (deg/sec)');
+%     %% Compute foot position over time
+%     r0 = zeros(3,length(tspan));
+%     v0 = zeros(3,length(tspan));
+%     for i = 1:length(tspan)
+%         r0(:,i) = position_hip(z_out(:,i),p);
+%         v0(:,i) = velocity_hip(z_out(:,i),p);
+%     end
+%     
+%     %PLOT DESIRED HIP POSITION VS ACTUAL 
+%     figure(2); clf;
+%     plot(tspan,r0(1,:),'r','LineWidth',2)
+%     hold on
+%     plot(tspan,p_traj.x_0 + p_traj.rx * cos(p_traj.omega*tspan) ,'r--');
+%     plot(tspan,r0(2,:),'b','LineWidth',2)
+%     plot(tspan,p_traj.y_0 + p_traj.ry * sin(p_traj.omega*tspan) ,'b--');
+%     
+%     
+%     xlabel('Time (s)'); ylabel('Position (m)'); legend({'x','x_d','y','y_d'});
+% 
+%     %PLOT TIME VS VELOCITY
+%     figure(3); clf;
+%     plot(tspan,v0(1,:),'r','LineWidth',2)
+%     hold on
+%     plot(tspan,v0(2,:),'b','LineWidth',2)
+%     
+%     xlabel('Time (s)'); ylabel('Velocity (m)'); legend({'vel_x','vel_y'});
+%     
+%     %PLOT ANGLE 
+%     figure(4)
+%     plot(tspan,z_out(1:2,:)*180/pi)
+%     legend('q1','q2');
+%     xlabel('Time (s)');
+%     ylabel('Angle (deg)');
+%     
+%     %PLOT ANGULAR VELOCITY
+%     figure(5)
+%     plot(tspan,z_out(3:4,:)*180/pi) %LINE MIGHT BE 4:6
+%     legend('q1dot','q2dot');
+%     xlabel('Time (s)');
+%     ylabel('Angular Velocity (deg/sec)');
     
     %% Animate Solution
     figure(6); clf;
@@ -122,33 +150,42 @@ function simulate_leg()
           p_traj.y_0 + p_traj.ry * sin(TH),'k--'); 
     
     % Ground Q2.3
-    plot([-.2 .2],[ground_height ground_height],'k'); 
+    %plot([-.2 .2],[ground_height ground_height],'k'); 
     
+    %ANIMATE
     animateSol(tspan, z_out,p);
+    
+    v0(:,i) = velocity_hip(z_out(:,i),p);
+    m = m0 + m1 + m2 + m3 + m4 + m5 + m5;
+    weight= m*g;
+    %debugging
+    taus;
+    power = mean(mean(taus.*p_traj.omega));
+    cost_of_transport_simulate_hip = power/(weight*v0(1));   
 end
 
 function tau = control_law(t, z, p, p_traj)
     % Controller gains, Update as necessary for Problem 1
     K_x = 150.; % Spring stiffness X
     K_y = 150.; % Spring stiffness Y
-    K_s = 150.;
+    K_s = 300.;
     D_x = 10.;  % Damping X
     D_y = 10.;  % Damping Y
-    D_s = 20.;
+    D_s = 50.;
     
     pos_hip = position_hip(z,p);
     v_hip = velocity_hip(z,p);
     
     v1 = norm(pos_hip(1:2) - [0 0]);
     
-    v2 = norm([pos_hip(1) 0]);
-    desired_angle = acos(v2/v1)
+    v2 = norm(pos_hip(2));
+    desired_angle = acos(v2/v1); %ACCOUNT FOR HIP JOINT AFFECTING ANGLE OF SWING LEG 
 
     % Desired position of foot is a circle
     % ONLY CONTROLLING HIP AND ANKLE
     omega_swing = p_traj.omega;
-    r0d = [p_traj.x_0 + p_traj.rx*cos(omega_swing*t) ...
-           p_traj.y_0 + p_traj.ry*sin(omega_swing*t) ...
+    r0d = [p_traj.x_0 + p_traj.rx*cos(omega_swing*t+pi) ...
+           p_traj.y_0 + p_traj.ry*sin(omega_swing*t+pi) ...
            0];
 %     % Compute desired velocity of foot
     v0d = [p_traj.rx*-sin(omega_swing*t)*omega_swing ...
@@ -158,20 +195,34 @@ function tau = control_law(t, z, p, p_traj)
     v0 = velocity_hip(z,p);
     
     if pos_hip(1) < 0
-        tds = pi-desired_angle;
+        tds = pi-desired_angle; %WHY THESE VALUES??
     else
-        tds = - desired_angle;
+        tds = desired_angle;
+    end
+    
+    if abs(pos_hip(1)) > 0.09
+        wd= 0;
+    else
+        wd = v0d(2);
+    end
+    
     ts = z(3);
     vs = z(6);
-    ws = 0; %CHANGING WS GIVES SINGULAR MATRIX
     
-    tau = [K_x * (r0d(1) - r0(1) ) + D_x * (v0d(1) - v0(1) ) ;
-           K_y * (r0d(2) - r0(2) ) + D_y * (v0d(2) - v0(2) ); K_s * (tds - ts) + D_s * 0];
-      
+    if p_traj.warmup == 0
+        r0d = [p_traj.x_0-p_traj.rx, p_traj.y_0];
+        v0d = [0 0];
+        tau = [K_x * (r0d(1) - r0(1) ) + D_x * (v0d(1) - v0(1) ) ;
+               K_y * (r0d(2) - r0(2) ) + D_y * (v0d(2) - v0(2) ); K_s * (tds - ts) + D_s * (wd-vs)];
+        
+    else
+        tau = [K_x * (r0d(1) - r0(1) ) + D_x * (v0d(1) - v0(1) ) ;
+               K_y * (r0d(2) - r0(2) ) + D_y * (v0d(2) - v0(2) ); K_s * (tds - ts) + D_s * (wd-vs)];
+    end  
 end
 
 
-function dz = dynamics(t,z,p,p_traj)
+function [dz,tau] = dynamics(t,z,p,p_traj)
     % Get mass matrix
     A = A_leg(z,p);
     
@@ -306,6 +357,6 @@ function animateSol(tspan, x,p)
         %Ground
          set(ground, 'XData' , [-2 2] );
          set(ground, 'YData' , [0 0] );
-         pause(.05)
+         pause(.02)
     end
 end
