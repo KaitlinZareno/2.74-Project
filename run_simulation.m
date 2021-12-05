@@ -20,18 +20,21 @@ clear all; close all; clc;
 
 ax = 0.05;
 by = 0.025;
+th = 0;
 la = 0.01;
 lb = 0.01;
+lth = -pi/2;
 ua = .1;
 ub = .03;
+uth = pi/2;
 
 
 % % setup and solve nonlinear programming problem
  problem.objective = @(x) objective(x);     % create anonymous function that returns objective
  %problem.nonlcon = @(x) constraints(a,b);     % create anonymous function that returns nonlinear constraints
- problem.x0 = [ax by];                   % initial guess for decision variables
- problem.lb = [la lb];     % lower bound on decision variables
- problem.ub = [ua ub];     % upper bound on decision variables
+ problem.x0 = [ax by th];                   % initial guess for decision variables
+ problem.lb = [la lb lth];     % lower bound on decision variables
+ problem.ub = [ua ub uth];     % upper bound on decision variables
  problem.Aineq = []; problem.bineq = [];         % no linear inequality constraints
  problem.Aeq = []; problem.beq = [];             % no linear equality constraints
  problem.options = optimset('Display','iter');   % set options
@@ -43,9 +46,10 @@ ub = .03;
 
 a_optimized = x(1)
 b_optimized = x(2)
+th_optimized = x(3)
 
 %% Plot COM for your submissions
-MCoT = cost_of_transport_simulate_hip(a_optimized, b_optimized);
+MCoT = cost_of_transport_simulate_hip(a_optimized, b_optimized, th_optimized);
 %%
 % Run the animation
 figure(3)                          

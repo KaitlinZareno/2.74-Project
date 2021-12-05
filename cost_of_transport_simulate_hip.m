@@ -1,4 +1,4 @@
-function cost_of_transport_simulate_hip = cost_of_transport_simulate_hip(rx,ry)
+function cost_of_transport_simulate_hip = cost_of_transport_simulate_hip(rx,ry, r)
     %% Definte fixed paramters
     m0 = 0.03; %MASS OF BOOM, ETC
     m1 =.0393 + .2;         m2 =.0368; 
@@ -44,6 +44,7 @@ function cost_of_transport_simulate_hip = cost_of_transport_simulate_hip(rx,ry)
     p_traj.ry    = ry;
     p_traj.warmup = 0;
     p_traj.tf = pi/p_traj.omega;
+    p_traj.rotation = r;
     
     %% Perform Dynamic simulation
     dt = 0.0001;
@@ -142,26 +143,33 @@ function cost_of_transport_simulate_hip = cost_of_transport_simulate_hip(rx,ry)
     figure(6); clf;
     hold on
    
-    %% plot foot target information
+    % plot foot target information
 
     % Target traj
     TH = 0:.1:2*pi;
-    plot( p_traj.x_0 + p_traj.rx * cos(TH), ...
-          p_traj.y_0 + p_traj.ry * sin(TH),'k--'); 
+    
+       
+     plot(p_traj.x_0 + (p_traj.rx*cos(TH)*cos(p_traj.rotation)) - (p_traj.ry*sin(TH)*sin(p_traj.rotation)), ...
+           p_traj.y_0 + (p_traj.ry*sin(TH)*cos(p_traj.rotation)) + (p_traj.rx*cos(TH)*sin(p_traj.rotation)) ...
+           ,'k--');
+       
+%     plot( p_traj.x_0 + p_traj.rx * cos(TH), ...
+%           p_traj.y_0 + p_traj.ry * sin(TH),'k--'); 
     
     % Ground Q2.3
-    %plot([-.2 .2],[ground_height ground_height],'k'); 
+    plot([-.2 .2],[ground_height ground_height],'k'); 
     
     %ANIMATE
     animateSol(tspan, z_out,p);
     
-    v0(:,i) = velocity_hip(z_out(:,i),p);
+%     v0(:,i) = velocity_hip(z_out(:,i),p);
     m = m0 + m1 + m2 + m3 + m4 + m5 + m5;
     weight= m*g;
     %debugging
+    v = (2*p_traj.rx/tf);
     taus;
     power = mean(mean(taus.*p_traj.omega));
-    cost_of_transport_simulate_hip = power/(weight*v0(1));   
+    cost_of_transport_simulate_hip = abs(power/(weight*v));   
 end
 
 function tau = control_law(t, z, p, p_traj)
@@ -184,12 +192,21 @@ function tau = control_law(t, z, p, p_traj)
     % Desired position of foot is a circle
     % ONLY CONTROLLING HIP AND ANKLE
     omega_swing = p_traj.omega;
-    r0d = [p_traj.x_0 + p_traj.rx*cos(omega_swing*t+pi) ...
-           p_traj.y_0 + p_traj.ry*sin(omega_swing*t+pi) ...
+%     r0d = [p_traj.x_0 + p_traj.rx*cos(omega_swing*t+pi) ...
+%            p_traj.y_0 + p_traj.ry*sin(omega_swing*t+pi) ...
+%            0];
+% %     % Compute desired velocity of foot
+%     v0d = [p_traj.rx*-sin(omega_swing*t+pi)*omega_swing ...  %WILL THIS HAV PI
+%            p_traj.ry* cos(omega_swing*t+pi)*omega_swing   0]';
+%        
+    %Rotated ellipses
+    r0d = [p_traj.x_0 + (p_traj.rx*cos(omega_swing*t+pi)*cos(p_traj.rotation)) - (p_traj.ry*sin(omega_swing*t+pi)*sin(p_traj.rotation)) ...
+           p_traj.y_0 + (p_traj.ry*sin(omega_swing*t+pi)*cos(p_traj.rotation)) + (p_traj.rx*cos(omega_swing*t+pi)*sin(p_traj.rotation)) ...
            0];
-%     % Compute desired velocity of foot
-    v0d = [p_traj.rx*-sin(omega_swing*t)*omega_swing ...
-           p_traj.ry* cos(omega_swing*t)*omega_swing   0]';
+    % Compute desired velocity of foot
+    v0d = [-p_traj.rx*omega_swing*sin(omega_swing*t+pi)*cos(p_traj.rotation) - p_traj.ry*omega_swing*sin(p_traj.rotation)*cos(omega_swing*t+pi)  ...  %WILL THIS HAV PI
+           p_traj.ry*omega_swing*cos(omega_swing*t+pi)*cos(p_traj.rotation) - p_traj.rx*omega_swing*sin(omega_swing*t+pi)*sin(p_traj.rotation) ...
+           0]';
 
     r0 = position_hip(z,p);
     v0 = velocity_hip(z,p);
