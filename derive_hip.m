@@ -3,7 +3,7 @@ name = 'leg';
 % Define variables for time, generalized coordinates + derivatives, controls, and parameters 
 syms t th1 th2 ths dth1 dth2 dths ddth1 ddth2 ddths real
 syms m0 m1 m2 m3 m4 m5 ms I1 I2 I3 I4 I5 Is l_m1 l_m2 l_m3 l_m4 l_ms ls g k real
-syms l_OA l_OB l_AC l_DE l_CE l_IG l_GH l_heela real 
+syms l_OA l_OB l_AC l_DE l_CE l_IG l_GH l_heela l_anklerest real 
 syms tau1 tau2 taus Fx Fy real
 syms Ir N real
 
@@ -14,7 +14,7 @@ ddq = [ddth1;ddth2; ddths];  % second time derivatives
 u   = [tau1 ; tau2; taus];     % controls
 F   = [Fx ; Fy];
 
-p   = [m0 m1 m2 m3 m4 m5 ms I1 I2 I3 I4 I5 Is Ir N g k l_m1 l_m2 l_m3 l_m4 l_ms ls l_OA l_OB l_AC l_DE l_CE l_IG l_GH l_heela]';        % parameters
+p   = [m0 m1 m2 m3 m4 m5 ms I1 I2 I3 I4 I5 Is Ir N g k l_m1 l_m2 l_m3 l_m4 l_ms ls l_OA l_OB l_AC l_DE l_CE l_IG l_GH l_heela l_anklerest]';        % parameters
 
 % Generate Vectors and Derivatives
 
@@ -102,15 +102,15 @@ P3 = m3*g*dot(r_m3,jhat);
 P4 = m4*g*dot(r_m4,jhat);
 
 %FOOT
-Pky = 1/2*k*(dot(rI,jhat)^2-dot(r_heela,jhat)^2); %break down spring force into x and y components
-Pkx = 1/2*k*(dot(rI,ihat)^2-dot(r_heela,ihat)^2); 
+ankle_length = rI-r_heela;
+Vheel = 1/2*k*((ankle_length-l_anklerest)'*(ankle_length-l_anklerest)); %break down spring force into x and y components
 
 %SWING LEG
 Ps = ms*g*dot(rMs,jhat);
 
 % Compute entire system energy 
 T = simplify(T0 + T1 + T2 + T3 + T4 + Ts + T1r + T2r + Tsr); %with x movement
-V = P1+P2+P3+P4+Pky+Pkx + Ps;
+V = P1+P2+P3+P4+ Vheel + Ps;
 
 % Find Generalized forces
 Q_tau1 = M2Q(tau1*khat,dth1*khat);
@@ -160,6 +160,10 @@ matlabFunction(Jhip,'file',['jacobian_hip'],'vars',{z p});
 matlabFunction(dJhip ,'file',['jacobian_dot_hip'],'vars',{z p});
 
 matlabFunction(keypoints,'file',['keypoints_' name],'vars',{z p});
+
+%ankle
+matlabFunction(r_heela,'file',['position_ankle'],'vars',{z p}); 
+matlabFunction(r_heela,'file',['velocity_ankle'],'vars',{z p});
 
 
 %Swing leg 

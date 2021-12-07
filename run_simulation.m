@@ -40,16 +40,16 @@ uth = pi/2;
  problem.options = optimset('Display','iter');   % set options
  problem.solver = 'fmincon';                     % required
  x = fmincon(problem);                           % solve nonlinear programming problem
-
 % Note that once you've solved the optimization problem, you'll need to 
 % re-define tf, tfc, and ctrl here to reflect your solution.
 
 a_optimized = x(1)
 b_optimized = x(2)
 th_optimized = x(3)
+k = 3;
 
 %% Plot COM for your submissions
-MCoT = cost_of_transport_simulate_hip(a_optimized, b_optimized, th_optimized);
+MCoT = cost_of_transport_simulate_hip(a_optimized, b_optimized, th_optimized, k);
 %%
 % Run the animation
 figure(3)                          
