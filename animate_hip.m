@@ -59,8 +59,8 @@ function cost_of_transport_simulate_hip = cost_of_transport_simulate_hip(rx,ry, 
     z0 = [-pi/4; pi/2; pi/4; 0; 0; 0];
     z_warmup = zeros(6,num_step);
     z_warmup(:,1) = z0;
-    %r0d = [p_traj.x_0-p_traj.rx, p_traj.y_0];
-    r0d = [p_traj.x_0-p_traj.rx*cos(p_traj.rotation), p_traj.y_0+p_traj.rx*sin(p_traj.rotation)]
+    r0d = [p_traj.x_0-p_traj.rx, p_traj.y_0];
+    %r0d = [p_traj.x_0-p_traj.rx*cos(p_traj.rotation), p_traj.y_0+p_traj.rx*sin(p_traj.rotation)];
     hip_pos = zeros(2,6);
     wi = 1;
     
@@ -78,6 +78,7 @@ function cost_of_transport_simulate_hip = cost_of_transport_simulate_hip(rx,ry, 
     p_traj.warmup = 1;
     z_out = zeros(6,num_step);
     z_out(1:3,1) = z_warmup(1:3,wi-1);
+    ankle_power = 0;
 
 %     %SIM TESTING
 %     z_out = zeros(6,num_step);
@@ -91,6 +92,14 @@ function cost_of_transport_simulate_hip = cost_of_transport_simulate_hip(rx,ry, 
         taus = [taus, tau];
         % Velocity update with dynamics
         z_out(:,i+1) = z_out(:,i) + dz*dt;
+        
+        ankle_pos = position_ankle(z_out(:,i),p);
+        ankle_vel = velocity_ankle(z_out(:,i),p);
+        ankle_length = sqrt((ankle_pos(1))^2+(ankle_pos(2))^2);
+        
+        %sum the ankle powers at each time step. to add to total power
+        %CHECK SIGNS
+        ankle_power  = ankle_power + (0.5*k*(ankle_length-l_anklerest))/norm(ankle_vel(1:2,:));
         
         % constraint handling (Velocity update)
         %z_out(3:4,i+1) = joint_limit_constraint(z_out(:,i+1),p);
@@ -175,7 +184,7 @@ function cost_of_transport_simulate_hip = cost_of_transport_simulate_hip(rx,ry, 
     axis = p_traj.rx*cos(p_traj.rotation);
     v = (2*axis/tf); %velocity = length of path/time it takes to complete path 
     taus; %array of controls [tau1, tau2, taus]
-    power = mean(mean(taus.*p_traj.omega)); %average controls to get power
+    power = mean(mean(taus.*p_traj.omega)) + ankle_power; %average controls to get power
     cost_of_transport_simulate_hip = power/(weight*v);
     hold off
 end
@@ -235,8 +244,8 @@ function tau = control_law(t, z, p, p_traj)
     vs = z(6);
     
     if p_traj.warmup == 0
-        %r0d = [p_traj.x_0-p_traj.rx, p_traj.y_0-p_traj.ry];
-        r0d = [p_traj.x_0-p_traj.rx*cos(p_traj.rotation), p_traj.y_0+p_traj.rx*sin(p_traj.rotation)];
+        r0d = [p_traj.x_0-p_traj.rx, p_traj.y_0-p_traj.ry];
+        %r0d = [p_traj.x_0-p_traj.rx*cos(p_traj.rotation), p_traj.y_0+p_traj.rx*sin(p_traj.rotation)];
         v0d = [0 0];
         tau = [K_x * (r0d(1) - r0(1) ) + D_x * (v0d(1) - v0(1) ) ;
                K_y * (r0d(2) - r0(2) ) + D_y * (v0d(2) - v0(2) ); K_s * (tds - ts) + D_s * (wd-vs)];
