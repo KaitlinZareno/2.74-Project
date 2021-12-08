@@ -28,7 +28,6 @@ function cost_of_transport_simulate_hip = cost_of_transport_simulate_hip(rx,ry, 
     Ir = 0.0035/N^2;
     g = 9.81;
     %=0;
-    k=k;   
     
     restitution_coeff = 0.5;
     friction_coeff = 0.01;
@@ -46,6 +45,9 @@ function cost_of_transport_simulate_hip = cost_of_transport_simulate_hip(rx,ry, 
     p_traj.warmup = 0;
     p_traj.tf = pi/p_traj.omega;
     p_traj.rotation = r;
+    
+    p_traj.k = k;
+    p_traj.l_anklerest = l_anklerest;
     
     %% Perform Dynamic simulation
     dt = 0.0001;
@@ -80,23 +82,16 @@ function cost_of_transport_simulate_hip = cost_of_transport_simulate_hip(rx,ry, 
     z_out = zeros(6,num_step);
     z_out(1:3,1) = z_warmup(1:3,wi-1);
     taus = [];
-    ankle_power = 0;
+    ankle_tot = 0;
     
     for i=1:num_step-1
-        [dz,tau] = dynamics(tspan(i), z_out(:,i), p, p_traj);
+        [dz,tau, ankle_power] = dynamics(tspan(i), z_out(:,i), p, p_traj);
         %get tau for power calculation
         taus = [taus, tau];
         % Velocity update with dynamics
         z_out(:,i+1) = z_out(:,i) + dz*dt;
         
-        ankle_pos = position_ankle(z_out(:,i),p);
-        ankle_vel = velocity_ankle(z_out(:,i),p);
-        ankle_length = sqrt((ankle_pos(1))^2+(ankle_pos(2))^2);
-        
-        %sum the ankle powers at each time step. to add to total power
-        %CHECK SIGNS .                
-        ankle_power  = ankle_power + (-k*ankle_length-l_anklerest)/norm(ankle_vel(1:2,:));
-        
+        ankle_tot = ankle_tot + ankle_power;
         % constraint handling (Velocity update)
         %z_out(3:4,i+1) = joint_limit_constraint(z_out(:,i+1),p);
         %z_out(7:12,i+1) = discrete_impact_contact(z_out(:,i+1), p, restitution_coeff, friction_coeff, ground_height);
@@ -174,13 +169,13 @@ function cost_of_transport_simulate_hip = cost_of_transport_simulate_hip(rx,ry, 
 %     %ANIMATE
 %     animateSol(tspan, z_out,p);
     
-    m = m0 + m1 + m2 + m3 + m4 + m5 + ms;
+    m = 2.105; %total mass of system (measured) 
     weight= m*g;
     %major axis in x (with rotated ellipse)
     axis = p_traj.rx*cos(p_traj.rotation);
     v = (2*axis/tf); %velocity = length of path/time it takes to complete path 
     taus; %array of controls [tau1, tau2, taus]
-    power = mean(mean(taus.*p_traj.omega)) + ankle_power; %average controls to get power
+    power = mean(mean(taus.*p_traj.omega)); %average controls to get power
     cost_of_transport_simulate_hip = power/(weight*v);
     hold off
 end
@@ -253,13 +248,20 @@ function tau = control_law(t, z, p, p_traj)
 end
 
 
-function [dz,tau] = dynamics(t,z,p,p_traj)
+function [dz,tau,ankle_power] = dynamics(t,z,p,p_traj)
     % Get mass matrix
     A = A_leg(z,p);
     
     % Compute Controls
     tau = control_law(t,z,p,p_traj);
 %     tau = [0;0;0];
+
+            
+    ankle_pos = position_ankle(z,p); %ANKLE POSITION not changing?? issue with it being here?
+    ankle_vel = velocity_ankle(z,p);
+    ankle_pos(1)
+    ankle_length = sqrt((ankle_pos(1)-)^2+(ankle_pos(2)-0)^2);
+    ankle_power  = -p_traj.k*(ankle_length-p_traj.l_anklerest)*norm(ankle_vel(1:2,:));
     
     % Get b = Q - V(q,qd) - G(q)
     b = b_leg(z,tau,p);

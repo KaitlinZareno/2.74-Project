@@ -5,7 +5,7 @@
 % chose your simulation parameters
 
 %% vary K
-K = logspace(1,3,10); 
+K = logspace(1,5,10); 
 
 rx = .0555; 
 ry = .0198; 
