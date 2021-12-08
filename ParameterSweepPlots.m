@@ -5,12 +5,12 @@
 % chose your simulation parameters
 
 %% vary K
-K = logspace(1,5,10); 
+K = logspace(1,2,10); 
 
-rx = .0555; 
-ry = .0198; 
+rx = .01; 
+ry = .03; 
 
-theta = .1183;
+theta = -1.407;
 
 CostsOfTransport = zeros(1,length(K)); 
 

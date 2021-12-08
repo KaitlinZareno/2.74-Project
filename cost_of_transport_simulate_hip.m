@@ -175,8 +175,6 @@ function cost_of_transport_simulate_hip = cost_of_transport_simulate_hip(rx,ry, 
     axis = p_traj.rx*cos(p_traj.rotation);
     v = (2*axis/tf); %velocity = length of path/time it takes to complete path 
     taus; %array of controls [tau1, tau2, taus]
-    mean(mean(ankles))
-    mean(mean(taus.*p_traj.omega))
     power = mean(mean(taus.*p_traj.omega)) + mean(mean(ankles)); %average controls to get power
     cost_of_transport_simulate_hip = power/(weight*v);
     hold off

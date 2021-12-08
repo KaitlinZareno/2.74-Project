@@ -46,7 +46,7 @@ uth = pi/3;
 a_optimized = x(1)
 b_optimized = x(2)
 th_optimized = x(3)
-k = 10;
+k = 50;
 
 %% Plot COM for your submissions
 MCoT = cost_of_transport_simulate_hip(a_optimized, b_optimized, th_optimized, k);
