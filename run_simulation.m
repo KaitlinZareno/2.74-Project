@@ -20,13 +20,13 @@ clear all; close all; clc;
 
 ax = 0.05;
 by = 0.025;
-th = 0;
+th = pi/6;
 la = 0.01;
 lb = 0.01;
-lth = -pi/3;
+lth = -pi/4;
 ua = .1;
 ub = .03;
-uth = pi/3;
+uth = pi/4;
 
 
 % % setup and solve nonlinear programming problem
@@ -45,8 +45,8 @@ uth = pi/3;
 
 a_optimized = x(1)
 b_optimized = x(2)
-th_optimized = x(3)
-k = 50;
+th_optimized = 0
+k = 3;
 
 %% Plot COM for your submissions
 MCoT = cost_of_transport_simulate_hip(a_optimized, b_optimized, th_optimized, k);

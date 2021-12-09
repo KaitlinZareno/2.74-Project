@@ -19,6 +19,6 @@ function f = objective(x)
    
     
     
-     f = cost_of_transport_simulate_hip(x(1),x(2),x(3),50); 
+     f = cost_of_transport_simulate_hip(x(1),x(2),x(3),3); 
      
 end

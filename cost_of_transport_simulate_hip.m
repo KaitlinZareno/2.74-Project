@@ -13,8 +13,8 @@ function cost_of_transport_simulate_hip = cost_of_transport_simulate_hip(rx,ry, 
     l_OA=.011;              l_OB=.042; 
     l_AC=.096;                l_DE=.0897;
     l_CE=.122;
-    l_IG = 0.01;            l_GH = 0.03;            l_heela = 0.03;
-    l_m1=0.032;             l_m2=0.0344;            l_anklerest = 0.086;
+    l_IG = 0.01;            l_GH = 0.03;            l_heela = 0.077;
+    l_m1=0.032;             l_m2=0.0344;            l_anklerest = 0.08;
     l_m3=0.0622;            l_m4=0.0610;
     c5=0.01;
     
@@ -62,8 +62,8 @@ function cost_of_transport_simulate_hip = cost_of_transport_simulate_hip(rx,ry, 
     z_warmup = zeros(6,num_step);
     z_warmup(:,1) = z0;
     %ROTATED ELLIPSE TRY
-    r0d = [p_traj.x_0-p_traj.rx, p_traj.y_0];
-    %r0d = [p_traj.x_0-p_traj.rx*cos(p_traj.rotation), p_traj.y_0+p_traj.rx*sin(p_traj.rotation)];
+    %r0d = [p_traj.x_0-p_traj.rx, p_traj.y_0];
+    r0d = [p_traj.x_0-p_traj.rx*cos(p_traj.rotation), p_traj.y_0+p_traj.rx*sin(p_traj.rotation)];
     hip_pos = zeros(2,6);
     wi = 1;
     
@@ -146,28 +146,28 @@ function cost_of_transport_simulate_hip = cost_of_transport_simulate_hip(rx,ry, 
 %     xlabel('Time (s)');
 % %     ylabel('Angular Velocity (deg/sec)');
 %     
-%     %% Animate Solution
-%     figure(6); clf;
-%     hold on
-%    
-%     % plot foot target information
-% 
-%     % Target traj
-%     TH = 0:.1:2*pi;
-%     
-%        
-%      plot(p_traj.x_0 + (p_traj.rx*cos(TH)*cos(p_traj.rotation)) - (p_traj.ry*sin(TH)*sin(p_traj.rotation)), ...
-%            p_traj.y_0 + (p_traj.ry*sin(TH)*cos(p_traj.rotation)) + (p_traj.rx*cos(TH)*sin(p_traj.rotation)) ...
-%            ,'k--');
-%        
-% %     plot( p_traj.x_0 + p_traj.rx * cos(TH), ...
-% %           p_traj.y_0 + p_traj.ry * sin(TH),'k--'); 
-%     
-%     % Ground Q2.3
-%     plot([-.2 .2],[ground_height ground_height],'k'); 
-%     
-%     %ANIMATE
-%     animateSol(tspan, z_out,p);
+    %% Animate Solution
+    figure(6); clf;
+    hold on
+   
+    % plot foot target information
+
+    % Target traj
+    TH = 0:.1:2*pi;
+    
+       
+     plot(p_traj.x_0 + (p_traj.rx*cos(TH)*cos(p_traj.rotation)) - (p_traj.ry*sin(TH)*sin(p_traj.rotation)), ...
+           p_traj.y_0 + (p_traj.ry*sin(TH)*cos(p_traj.rotation)) + (p_traj.rx*cos(TH)*sin(p_traj.rotation)) ...
+           ,'k--');
+       
+%     plot( p_traj.x_0 + p_traj.rx * cos(TH), ...
+%           p_traj.y_0 + p_traj.ry * sin(TH),'k--'); 
+    
+    % Ground Q2.3
+    plot([-.2 .2],[ground_height ground_height],'k'); 
+    
+    %ANIMATE
+    animateSol(tspan, z_out,p);
     
     m = 2.105; %total mass of system (measured) 
     weight= m*g;
@@ -175,8 +175,11 @@ function cost_of_transport_simulate_hip = cost_of_transport_simulate_hip(rx,ry, 
     axis = p_traj.rx*cos(p_traj.rotation);
     v = (2*axis/tf); %velocity = length of path/time it takes to complete path 
     taus; %array of controls [tau1, tau2, taus]
-    power = mean(mean(taus.*p_traj.omega)) + mean(mean(ankles)); %average controls to get power
-    cost_of_transport_simulate_hip = power/(weight*v);
+    power = mean(mean(taus.*p_traj.omega)) + mean(ankles); %average controls to get power
+    %d =  (p_traj.rx*p_traj.ry)/sqrt( (p_traj.ry*cos(p_traj.rotation)^2 + (p_traj.rx*sin(p_traj.rotation))^2))*2
+    d = rx;
+    power = (mean(sum(taus.*p_traj.omega)) + sum(ankles))*dt;
+    cost_of_transport_simulate_hip = power/(weight*d);
     hold off
 end
 
@@ -235,8 +238,8 @@ function tau = control_law(t, z, p, p_traj)
     vs = z(6);
     
     if p_traj.warmup == 0
-        r0d = [p_traj.x_0-p_traj.rx, p_traj.y_0-p_traj.ry];
-        %r0d = [p_traj.x_0-p_traj.rx*cos(p_traj.rotation), p_traj.y_0+p_traj.rx*sin(p_traj.rotation)];
+        %r0d = [p_traj.x_0-p_traj.rx, p_traj.y_0-p_traj.ry];
+        r0d = [p_traj.x_0-p_traj.rx*cos(p_traj.rotation), p_traj.y_0+p_traj.rx*sin(p_traj.rotation)];
         v0d = [0 0];
         tau = [K_x * (r0d(1) - r0(1) ) + D_x * (v0d(1) - v0(1) ) ;
                K_y * (r0d(2) - r0(2) ) + D_y * (v0d(2) - v0(2) ); K_s * (tds - ts) + D_s * (wd-vs)];
@@ -256,11 +259,13 @@ function [dz,tau,ankle_power] = dynamics(t,z,p,p_traj)
     tau = control_law(t,z,p,p_traj);
 %     tau = [0;0;0];
 
-            
     ankle_pos = position_ankle(z,p); %ANKLE POSITION not changing?? issue with it being here?
     ankle_vel = velocity_ankle(z,p);
     ankle_length = sqrt((ankle_pos(1)-(-0.01))^2+(ankle_pos(2)-0)^2);
     ankle_power  = -p_traj.k*(ankle_length-p_traj.l_anklerest)*norm(ankle_vel(1:2,:));
+%     if mod(t,0.005) == 0
+%         ankle_power
+%     end
     
     % Get b = Q - V(q,qd) - G(q)
     b = b_leg(z,tau,p);

@@ -5,12 +5,12 @@
 % chose your simulation parameters
 
 %% vary K
-K = logspace(1,2,10); 
+K = logspace(1,2,20); 
 
 rx = .01; 
 ry = .03; 
 
-theta = -1.407;
+theta = 0;
 
 CostsOfTransport = zeros(1,length(K)); 
 
@@ -27,8 +27,8 @@ ylabel('Cost of Transport');
 
 
 %% Vary a and b
-K = 50;
-rx = .01:.005:.1; 
+K = 3;
+rx = .01:.005:.05; 
 ry = .01:.005:.05;
 
 [gridx, gridy] = meshgrid(rx, ry); 
@@ -57,11 +57,11 @@ s.EdgeColor = 'none';
 % get cost of transport for the optimal solution and plot that too; 
 hold on; 
 
-rx = .0555; 
-ry = .0198;
+rx = .01; 
+ry = .03;
 
 cost = cost_of_transport_simulate_hip(rx, ry, theta, K);
 
 scatter3(rx, ry, cost, '.r');  
 
-%improvePlot(); 
+improvePlot(); 
