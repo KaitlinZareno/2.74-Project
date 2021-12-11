@@ -28,28 +28,32 @@ ua = .1;
 ub = .03;
 uth = pi/4;
 
+res = zeros(3,3);
+% A = [.01,.015,.02,.025,.03,.035,.04,.0.45,.05,.055,.06];
+A = [30,50,100];
 
 % % setup and solve nonlinear programming problem
- problem.objective = @(x) objective(x);     % create anonymous function that returns objective
- %problem.nonlcon = @(x) constraints(a,b);     % create anonymous function that returns nonlinear constraints
- problem.x0 = [ax by th];                   % initial guess for decision variables
- problem.lb = [la lb lth];     % lower bound on decision variables
- problem.ub = [ua ub uth];     % upper bound on decision variables
- problem.Aineq = []; problem.bineq = [];         % no linear inequality constraints
- problem.Aeq = []; problem.beq = [];             % no linear equality constraints
- problem.options = optimset('Display','iter');   % set options
- problem.solver = 'fmincon';                     % required
- x = fmincon(problem);                           % solve nonlinear programming problem
-% Note that once you've solved the optimization problem, you'll need to 
-% re-define tf, tfc, and ctrl here to reflect your solution.
+for i = 1:length(A)
+     problem.objective = @(x) objective(x,A(i));     % create anonymous function that returns objective
+     %problem.nonlcon = @(x) constraints(a,b);     % create anonymous function that returns nonlinear constraints
+     problem.x0 = [ax by];                   % initial guess for decision variables
+     problem.lb = [la lb];     % lower bound on decision variables
+     problem.ub = [ua ub];     % upper bound on decision variables
+     problem.Aineq = []; problem.bineq = [];         % no linear inequality constraints
+     problem.Aeq = []; problem.beq = [];             % no linear equality constraints
+     problem.options = optimset('Display','iter');   % set options
+     problem.solver = 'fmincon';                     % required
+     x = fmincon(problem);                           % solve nonlinear programming problem
+    % Note that once you've solved the optimization problem, you'll need to 
+    % re-define tf, tfc, and ctrl here to reflect your solution.
+    a_optimized = x(1)
+    b_optimized = x(2)
+    k_optimized = A(i)
+    res(:,i) = [a_optimized,b_optimized,k_optimized];
 
-a_optimized = x(1)
-b_optimized = x(2)
-th_optimized = 0
-k = 3;
-
-%% Plot COM for your submissions
-MCoT = cost_of_transport_simulate_hip(a_optimized, b_optimized, th_optimized, k);
-%%
+    %% Plot COM for your submissions
+    MCoT = simulate_system_leg_downloaded2(a_optimized, b_optimized, k_optimized);
+end
+res
 % Run the animation
-figure(3)                          
+%figure(3)                          

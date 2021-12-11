@@ -5,9 +5,9 @@
 % chose your simulation parameters
 
 %% vary K
-K = logspace(0,3,50); 
+K = logspace(1,2,20); 
 
-rx =  0.0520; 
+rx = .01; 
 ry = .03; 
 
 theta = 0;
@@ -16,7 +16,7 @@ CostsOfTransport = zeros(1,length(K));
 
 for i = 1:length(K)
     
-    CostsOfTransport(i) = simulate_system_leg_downloaded2(rx, ry, K(i)) 
+    CostsOfTransport(i) = simulate_system_leg_downloaded2(rx, ry, theta, K(i)) 
     
 end
 
@@ -27,7 +27,7 @@ ylabel('Cost of Transport');
 
 
 %% Vary a and b
-K = 5;
+K = 3;
 rx = .01:.005:.05; 
 ry = .01:.005:.05;
 
@@ -37,7 +37,7 @@ costsOfTransport = zeros(1,numel(gridx));
 
 for i = 1:numel(gridx)
     
-    costsOfTransport(i) = simulate_system_leg_downloaded2(gridx(i), gridy(i), K);
+    costsOfTransport(i) = cost_of_transport_simulate_hip(gridx(i), gridy(i), theta, K);
     
 end
 
@@ -57,10 +57,10 @@ s.EdgeColor = 'none';
 % get cost of transport for the optimal solution and plot that too; 
 hold on; 
 
-rx =  0.0520; 
+rx = .01; 
 ry = .03;
 
-cost = simulate_system_leg_downloaded2(rx, ry, K);
+cost = cost_of_transport_simulate_hip(rx, ry, theta, K);
 
 scatter3(rx, ry, cost, '.r');  
 

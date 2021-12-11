@@ -1,4 +1,4 @@
-function f = objective(x)
+function f = objective(x,a)
 % Inputs:
 %a axis of ellipse in x dir
 %b axis of ellipse in y dir
@@ -17,8 +17,6 @@ function f = objective(x)
 % provided using an anonymous function, just as we use anonymous
 % functions with ode45().
    
-    
-    
-     f = cost_of_transport_simulate_hip(x(1),x(2),x(3),3); 
+     f = simulate_system_leg_downloaded2(x(1),x(2),a); 
      
 end

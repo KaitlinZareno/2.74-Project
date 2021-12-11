@@ -10,7 +10,7 @@ syms tau1 tau2 tau3 tau21 tau22 tau23 Fx Fy real
 syms Ir N real
 
 % Group them
-q   = [x y t th1 th2 th3 th21 th22 th23]';      % generalized coordinates
+q   = [x y th1 th2 th3 th21 th22 th23]';      % generalized coordinates
 dq  = [dx dy dth1 dth2 dth3 dth21 dth22 dth23]';    % first time derivatives
 ddq = [ddx ddy ddth1 ddth2 ddth3 ddth21 ddth22 ddth23]';  % second time derivatives
 u   = [tau1 tau2 tau3 tau21 tau22 tau23]';     % controls
@@ -26,14 +26,15 @@ ihat = [1; 0; 0];
 jhat = [0; 1; 0];
 khat = cross(ihat,jhat);
 
+%LEG 1
 th1hat = sin(th1)*ihat - cos(th1)*jhat;
 th2hat = sin(th2 + th1)*ihat - cos(th2 + th1)*jhat;
-th3hat = sin(th3 + th1)*ihat - cos(th3 + th1)*jhat; %th2 hat not relevant in this, th3 is a sum of th1 and th3
+th3hat = sin(th3 + th2 + th1)*ihat - cos(th3 + th2+ th1)*jhat; %th2 hat not relevant 
 
-
-th1hat_s = sin(th1)*ihat - cos(th1)*jhat;
-th2hat_s = sin(th2 + th1)*ihat - cos(th2 + th1)*jhat;
-th3hat_s = sin(th3 + th1)*ihat - cos(th3+ th1)*jhat;
+%LEG 2
+th1hat_s = sin(th21)*ihat - cos(th21)*jhat;
+th2hat_s = sin(th22 + th21)*ihat - cos(th22 + th21)*jhat;
+th3hat_s = sin(th23 + th22 + th21)*ihat - cos(th23 + th22+ th21)*jhat;
 % ---------------------------------- %
 
 ddt = @(r) jacobian(r,[q;dq])*[dq;ddq]; % a handy anonymous function for taking time derivatives
@@ -70,7 +71,7 @@ r2M2 = r2B + l_B_m2 * th2hat_s;
 
 r2C = r2A + l_AC * th2hat_s;
 r2D = r2B + l_AC*th2hat_s; 
-r2E = r2D + l_DE*th1hat_s; %defined rc+lce*th1hat?
+r2E = r2D + l_DE*th1hat_s;
 
 r2M4 = r2C + l_C_m4*th1hat_s;
 
@@ -132,7 +133,7 @@ T5 = (1/2)*m5*dot(vM5', vM5)+ (1/2)*(I5)*omega5^2;
 
 %SECOND LEG
 omega21 = dth21;
-omega22 = dth21 + dthd2;
+omega22 = dth21 + dth22;
 omega23 = dth21 + dth22;
 omega24 = dth21;
 omega25 = dth21 + dth23; 
@@ -172,7 +173,7 @@ P4 = m4*g*dot(rM4,jhat);
 P5 = m5*g*dot(rM5,jhat);
 % Pky = 1/2*k*(dot(rI,-ihat)^2-dot(r_heela,-ihat)^2); %break down spring force into x and y components
 % Pkx = 1/2*k*(dot(rI,jhat)^2-dot(r_heela,jhat)^2); 
-dist = (r_heela-rI);
+dist = r_heela-rI;
 Pa = 1/2*k*((dist-l_anklerest)'*(dist-l_anklerest)); %break down spring force into x and y components
 
 
@@ -184,7 +185,7 @@ P24 = m4*g*dot(r2M4,jhat);
 
 %FOOT
 P25 = m5*g*dot(r2M5,jhat);
-dist2 = (r2_heela-r2I);
+dist2 = r2_heela-r2I;
 P2a = 1/2*k*((dist2-l_anklerest)'*(dist2-l_anklerest)); %break down spring force into x and y components
 
 % Compute entire system potential energy 
@@ -306,7 +307,7 @@ dJheel2= reshape( ddt(Jheel2(:)) , size(Jheel2) );
 Jheel2  = Jheel2(1:2,:);
 dJheel2 = dJheel2(1:2,:);
 
-matlabFunction(r2I,'file',['position_hee2'],'vars',{z p});
+matlabFunction(r2I,'file',['position_heel2'],'vars',{z p});
 matlabFunction(dr2I,'file',['velocity_heel2'],'vars',{z p});
 matlabFunction(Jheel2,'file',['jacobian_heel2'],'vars',{z p});
 matlabFunction(dJheel2 ,'file',['jacobian_dot_heel2'],'vars',{z p});
